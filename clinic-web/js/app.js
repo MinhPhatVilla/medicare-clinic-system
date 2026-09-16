@@ -1170,11 +1170,30 @@ function renderDoctorExamination() {
   return `
     <div class="main-header">
       <div>
-        <h2>📋 Phiếu Khám Bệnh Điện Tử — <span class="text-gradient">PK-20260914-${String(patient.id).padStart(3, '0')}</span></h2>
-        <div class="subtitle">Bác sĩ phụ trách: <strong>TS.BS Trần Thị Minh</strong> (Nội khoa • Phòng 201)</div>
+        <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+          <h2>📋 Phiếu Khám Bệnh Điện Tử — <span class="text-gradient">PK-20260914-${String(patient.id).padStart(3, '0')}</span></h2>
+          <span id="examStatusBadge" class="badge ${patient.status === 'in_progress' ? 'badge-primary' : 'badge-warning'}">
+            ${patient.status === 'in_progress' ? '🩺 Đang khám' : '⏳ Chờ khám'}
+          </span>
+        </div>
+        <div class="subtitle" style="display:flex; align-items:center; gap:1.5rem; flex-wrap:wrap; margin-top:0.25rem;">
+          <span>Bác sĩ phụ trách: <strong>TS.BS Trần Thị Minh</strong> (Nội khoa • Phòng 201)</span>
+          <span id="autoSaveIndicator" style="font-size: 0.8rem; color: #4ade80; display: inline-flex; align-items: center; gap: 0.35rem;">
+            💾 <span id="autoSaveText">Tự động lưu nháp: Đã sẵn sàng</span>
+          </span>
+        </div>
       </div>
-      <div class="flex gap-sm">
+      <div class="flex gap-sm" style="flex-wrap:wrap;">
         <button class="btn btn-secondary" onclick="navigate('doctor-dashboard', 'doctor')">← Hàng đợi</button>
+        ${patient.status !== 'in_progress' ? `
+          <button class="btn btn-primary" id="btnStartExam" onclick="startPatientExamination(${patient.id})">
+            ▶ Bắt đầu khám
+          </button>
+        ` : `
+          <button class="btn btn-outline" onclick="triggerManualSaveDraft(${patient.id})">
+            💾 Lưu nháp
+          </button>
+        `}
         <button class="btn btn-success" onclick="completeExamination(${patient.id})">✅ Hoàn tất khám & Chuyển Thu ngân</button>
       </div>
     </div>
@@ -1210,51 +1229,64 @@ function renderDoctorExamination() {
           <div class="vitals-grid">
             <div class="vital-input">
               <label>Mạch</label>
-              <input type="text" id="vitalPulse" value="80" placeholder="80">
+              <input type="text" id="vitalPulse" value="80" oninput="handleAutoSaveDraft(${patient.id})" placeholder="80">
               <div class="unit">lần/phút</div>
             </div>
             <div class="vital-input">
               <label>Huyết áp</label>
-              <input type="text" id="vitalBP" value="120/80" placeholder="120/80">
+              <input type="text" id="vitalBP" value="120/80" oninput="handleAutoSaveDraft(${patient.id})" placeholder="120/80">
               <div class="unit">mmHg</div>
             </div>
             <div class="vital-input">
               <label>Thân nhiệt</label>
-              <input type="text" id="vitalTemp" value="36.8" placeholder="36.5">
+              <input type="text" id="vitalTemp" value="36.8" oninput="handleAutoSaveDraft(${patient.id})" placeholder="36.5">
               <div class="unit">°C</div>
             </div>
             <div class="vital-input">
               <label>Chiều cao</label>
-              <input type="number" id="vitalHeight" value="170" oninput="calculateBMI()" placeholder="170">
+              <input type="number" id="vitalHeight" value="170" oninput="calculateBMI(); handleAutoSaveDraft(${patient.id});" placeholder="170">
               <div class="unit">cm</div>
             </div>
             <div class="vital-input">
               <label>Cân nặng</label>
-              <input type="number" id="vitalWeight" value="65" oninput="calculateBMI()" placeholder="65">
+              <input type="number" id="vitalWeight" value="65" oninput="calculateBMI(); handleAutoSaveDraft(${patient.id});" placeholder="65">
               <div class="unit">kg</div>
+            </div>
+            <div class="vital-input">
+              <label>SpO2</label>
+              <input type="number" id="vitalSpo2" value="98" oninput="handleAutoSaveDraft(${patient.id})" placeholder="98">
+              <div class="unit">%</div>
             </div>
           </div>
         </div>
 
         <!-- Clinical Exam Card -->
         <div class="card animate-in animate-in-delay-1" style="margin-bottom: 1.5rem;">
-          <h4 style="margin-bottom: 1rem;">🔍 Khám lâm sàng & Triệu chứng</h4>
+          <h4 style="margin-bottom: 1rem;">🔍 Khám lâm sàng & Bệnh sử</h4>
           <div class="form-group" style="margin-bottom: 1rem;">
-            <label class="form-label">Lý do khám bệnh ban đầu</label>
-            <input type="text" class="form-input" id="examReason" value="${patient.reason}">
+            <label class="form-label">Lý do đến khám ban đầu</label>
+            <input type="text" class="form-input" id="examReason" value="${patient.reason}" oninput="handleAutoSaveDraft(${patient.id})">
+          </div>
+          <div class="form-group" style="margin-bottom: 1rem;">
+            <label class="form-label">Bệnh sử hiện tại & Diễn tiến</label>
+            <textarea class="form-input" id="examHistory" rows="2" placeholder="Nhập bệnh sử hiện tại..." oninput="handleAutoSaveDraft(${patient.id})">Khởi phát cách đây 3 ngày với cảm giác ợ chua, cồn cào vùng thượng vị sau ăn. Đã tự dùng thuốc dạ dày không đỡ.</textarea>
           </div>
           <div class="form-group" style="margin-bottom: 1rem;">
             <label class="form-label">Ghi nhận triệu chứng lâm sàng</label>
-            <textarea class="form-input" id="examSymptoms" rows="3">Đau tức ngực, khó thở nhẹ khi gắng sức. Thỉnh thoảng có ợ chua vùng thượng vị. Không sốt, không ho ra máu.</textarea>
+            <textarea class="form-input" id="examSymptoms" rows="2" oninput="handleAutoSaveDraft(${patient.id})">Bụng mềm, ấn đau tức nhẹ thượng vị, không đề kháng. Tim đều, phổi trong, không ran.</textarea>
+          </div>
+          <div class="form-group" style="margin-bottom: 1rem;">
+            <label class="form-label">Chẩn đoán sơ bộ ban đầu</label>
+            <input type="text" class="form-input" id="examPrelimDiagnosis" value="Theo dõi Viêm loét dạ dày tá tràng cấp" oninput="handleAutoSaveDraft(${patient.id})">
           </div>
           <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1rem;">
             <div class="form-group">
               <label class="form-label">Chẩn đoán xác định</label>
-              <input type="text" class="form-input" id="examDiagnosis" value="Viêm dạ dày tá tràng / Theo dõi trào ngược dạ dày thực quản">
+              <input type="text" class="form-input" id="examDiagnosis" value="Viêm dạ dày tá tràng / Theo dõi trào ngược dạ dày thực quản" oninput="handleAutoSaveDraft(${patient.id})">
             </div>
             <div class="form-group">
               <label class="form-label">Mã ICD-10</label>
-              <select class="form-input" id="examIcd10">
+              <select class="form-input" id="examIcd10" onchange="handleAutoSaveDraft(${patient.id})">
                 <option value="K29" selected>K29 - Viêm dạ dày</option>
                 <option value="K21">K21 - Trào ngược dạ dày (GERD)</option>
                 <option value="I10">I10 - Tăng huyết áp vô căn</option>
@@ -2299,6 +2331,69 @@ function selectPatientForExam(id) {
   const p = MOCK_DATA.patients.find(pt => pt.id === id);
   navigate('doctor-examination', 'doctor');
   showToast(`Đã mở hồ sơ khám cho bệnh nhân ${p?.name}`, 'info');
+}
+
+// ─── Bắt đầu khám bệnh (chuyển sang IN_PROGRESS) ───
+function startPatientExamination(patientId) {
+  const p = MOCK_DATA.patients.find(pt => pt.id === patientId) || MOCK_DATA.patients[0];
+  p.status = 'in_progress';
+
+  // Đồng bộ appointment
+  const apt = MOCK_DATA.appointments.find(a => a.patient === p.name);
+  if (apt) apt.status = 'in_progress';
+
+  showToast(`🩺 Đã bắt đầu khám cho bệnh nhân ${p.name}!`, 'success');
+  render();
+}
+
+// ─── Cơ chế Auto-save Draft (Lưu nháp tự động sau 1.2s người dùng ngừng gõ) ───
+let autoSaveTimeout = null;
+
+function handleAutoSaveDraft(patientId) {
+  const statusEl = document.getElementById('autoSaveText');
+  const indicatorEl = document.getElementById('autoSaveIndicator');
+  if (statusEl) {
+    statusEl.textContent = 'Đang lưu nháp...';
+    if (indicatorEl) indicatorEl.style.color = '#f59e0b';
+  }
+
+  clearTimeout(autoSaveTimeout);
+  autoSaveTimeout = setTimeout(() => {
+    const draftData = {
+      patientId,
+      pulse: document.getElementById('vitalPulse')?.value,
+      bp: document.getElementById('vitalBP')?.value,
+      temp: document.getElementById('vitalTemp')?.value,
+      height: document.getElementById('vitalHeight')?.value,
+      weight: document.getElementById('vitalWeight')?.value,
+      spo2: document.getElementById('vitalSpo2')?.value,
+      reason: document.getElementById('examReason')?.value,
+      history: document.getElementById('examHistory')?.value,
+      symptoms: document.getElementById('examSymptoms')?.value,
+      prelimDiagnosis: document.getElementById('examPrelimDiagnosis')?.value,
+      diagnosis: document.getElementById('examDiagnosis')?.value,
+      icd10: document.getElementById('examIcd10')?.value,
+      notes: document.getElementById('examNotes')?.value,
+      followUp: document.getElementById('examFollowUp')?.value,
+      savedAt: new Date().toLocaleTimeString('vi-VN')
+    };
+
+    try {
+      localStorage.setItem(`medicare_draft_exam_${patientId}`, JSON.stringify(draftData));
+    } catch (e) {
+      console.warn('Không thể lưu nháp vào localStorage:', e);
+    }
+
+    if (statusEl) {
+      statusEl.textContent = `Đã tự động lưu nháp lúc ${draftData.savedAt}`;
+      if (indicatorEl) indicatorEl.style.color = '#4ade80';
+    }
+  }, 1200);
+}
+
+function triggerManualSaveDraft(patientId) {
+  handleAutoSaveDraft(patientId);
+  showToast('💾 Đã lưu nháp hồ sơ khám bệnh thành công!', 'info');
 }
 
 function calculateBMI() {

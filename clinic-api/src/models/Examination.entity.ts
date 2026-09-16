@@ -110,6 +110,9 @@ export class Examination {
   medicalHistory: string; // Tiền sử bệnh tật liên quan
 
   // ---- Chẩn đoán ----
+  @Column({ name: 'preliminary_diagnosis', type: 'text', nullable: true })
+  preliminaryDiagnosis: string; // Chẩn đoán sơ bộ ban đầu (khi khám lâm sàng)
+
   @Column({ name: 'icd10_code', length: 20, nullable: true })
   icd10Code: string; // Mã ICD-10, VD: "J06.9"
 
@@ -117,7 +120,10 @@ export class Examination {
   icd10Description: string; // Mô tả ICD-10 bằng tiếng Việt
 
   @Column({ name: 'diagnosis', type: 'text', nullable: true })
-  diagnosis: string; // Chẩn đoán (text mô tả, null khi đang ở trạng thái WAITING)
+  diagnosis: string; // Chẩn đoán xác định (text mô tả, null khi đang ở trạng thái WAITING hoặc DRAFT)
+
+  @Column({ name: 'is_draft', default: false })
+  isDraft: boolean; // Đánh dấu phiếu đang là bản lưu nháp (Auto-save draft)
 
   @Column({ name: 'clinical_notes', type: 'text', nullable: true })
   clinicalNotes: string; // Ghi chú lâm sàng
