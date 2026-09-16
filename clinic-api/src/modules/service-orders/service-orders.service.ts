@@ -1,15 +1,19 @@
 /**
  * @file src/modules/service-orders/service-orders.service.ts
- * @description Service xử lý nghiệp vụ Chỉ định Cận Lâm Sàng & Tự động đồng bộ Chi phí tạm tính
+ * @description Service xử lý nghiệp vụ Chỉ định Cận Lâm Sàng, Hàng đợi Kỹ thuật viên & Đồng bộ Chi phí
+ *
+ * Tối ưu hóa hiệu năng:
+ * - Sử dụng QueryBuilder với JOIN (leftJoinAndSelect) để giải quyết triệt để bài toán N+1 Query.
+ * - Lọc và phân trang trực tiếp ở tầng Database thay vì in-memory.
  */
 
-import { Repository, Like, In } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { AppDataSource } from '../../config/database';
 import { ServiceOrder, ServiceOrderStatus } from '../../models/ServiceOrder.entity';
 import { MedicalService } from '../../models/MedicalService.entity';
 import { Examination } from '../../models/Examination.entity';
 import { Appointment } from '../../models/Appointment.entity';
-import { Invoice, InvoiceStatus, PaymentMethod } from '../../models/Invoice.entity';
+import { Invoice, InvoiceStatus } from '../../models/Invoice.entity';
 import { Doctor } from '../../models/Doctor.entity';
 import { NotFoundError, BadRequestError } from '../../exceptions/AppError';
 import {
@@ -18,6 +22,8 @@ import {
   PayServiceOrdersDto,
   ServiceCatalogQueryDto,
   CreateMedicalServiceDto,
+  EnterServiceOrderResultDto,
+  TechnicianQueueQueryDto,
 } from './service-orders.dto';
 
 export class ServiceOrdersService {
@@ -42,39 +48,34 @@ export class ServiceOrdersService {
   // ============================================================
 
   /**
-   * Lấy danh mục dịch vụ kỹ thuật kèm giá niêm yết
+   * Lấy danh mục dịch vụ kỹ thuật kèm giá niêm yết (tối ưu query trực tiếp trên DB)
    */
   async getCatalog(query: ServiceCatalogQueryDto) {
-    const where: any = {};
+    const qb = this.medicalServiceRepo.createQueryBuilder('service');
+
     if (query.serviceType) {
-      where.serviceType = query.serviceType;
+      qb.andWhere('service.serviceType = :serviceType', { serviceType: query.serviceType });
     }
     if (query.isActive !== undefined) {
-      where.isActive = query.isActive;
+      qb.andWhere('service.isActive = :isActive', { isActive: query.isActive });
     }
-
-    let items = await this.medicalServiceRepo.find({
-      where,
-      order: { serviceType: 'ASC', code: 'ASC' },
-    });
-
     if (query.search) {
-      const q = query.search.toLowerCase();
-      items = items.filter(
-        (s) =>
-          s.name.toLowerCase().includes(q) ||
-          s.code.toLowerCase().includes(q) ||
-          (s.department && s.department.toLowerCase().includes(q)),
+      qb.andWhere(
+        '(LOWER(service.name) LIKE LOWER(:search) OR LOWER(service.code) LIKE LOWER(:search) OR LOWER(service.department) LIKE LOWER(:search))',
+        { search: `%${query.search}%` },
       );
     }
 
-    const total = items.length;
+    qb.orderBy('service.serviceType', 'ASC').addOrderBy('service.code', 'ASC');
+
     const page = query.page || 1;
     const limit = query.limit || 50;
-    const paginatedItems = items.slice((page - 1) * limit, page * limit);
+    qb.skip((page - 1) * limit).take(limit);
+
+    const [items, total] = await qb.getManyAndCount();
 
     return {
-      items: paginatedItems,
+      items,
       pagination: {
         total,
         page,
@@ -106,7 +107,7 @@ export class ServiceOrdersService {
   /**
    * Bác sĩ tạo một hoặc nhiều chỉ định CLS thuộc phiếu khám (record_id / examinationId)
    */
-  async createOrders(dto: CreateServiceOrdersDto, doctorUserId?: string) {
+  async createOrders(dto: CreateServiceOrdersDto, _doctorUserId?: string) {
     const examination = await this.examRepo.findOne({
       where: { id: dto.examinationId },
       relations: ['appointment', 'doctor', 'doctor.user', 'patient'],
@@ -153,7 +154,7 @@ export class ServiceOrdersService {
   }
 
   /**
-   * Lấy danh sách chỉ định CLS thuộc phiếu khám
+   * Lấy danh sách chỉ định CLS thuộc phiếu khám (JOIN 1 query chống N+1)
    */
   async getOrdersByExamination(examinationId: string) {
     const examination = await this.examRepo.findOne({
@@ -165,8 +166,10 @@ export class ServiceOrdersService {
       throw new NotFoundError('Phiếu khám bệnh');
     }
 
+    // Single query JOIN service chống N+1
     const orders = await this.serviceOrderRepo.find({
       where: { examinationId },
+      relations: ['service'],
       order: { createdAt: 'ASC' },
     });
 
@@ -215,7 +218,6 @@ export class ServiceOrdersService {
       throw new NotFoundError('Chỉ định cận lâm sàng');
     }
 
-    // Cập nhật các trường
     order.status = dto.status;
     if (dto.result !== undefined) order.result = dto.result;
     if (dto.resultFileUrl !== undefined) order.resultFileUrl = dto.resultFileUrl;
@@ -227,7 +229,6 @@ export class ServiceOrdersService {
 
     const updated = await this.serviceOrderRepo.save(order);
 
-    // Nếu trạng thái đổi sang CANCELLED, đồng bộ lại hóa đơn tạm tính
     if (dto.status === ServiceOrderStatus.CANCELLED && order.examinationId) {
       await this.syncEstimatedInvoice(order.examinationId);
     }
@@ -238,7 +239,7 @@ export class ServiceOrdersService {
   /**
    * Thu tiền các chỉ định CLS (chuyển sang PAID)
    */
-  async payOrders(dto: PayServiceOrdersDto, cashierUserId?: string) {
+  async payOrders(dto: PayServiceOrdersDto, _cashierUserId?: string) {
     const examination = await this.examRepo.findOne({
       where: { id: dto.examinationId },
     });
@@ -303,7 +304,250 @@ export class ServiceOrdersService {
   }
 
   // ============================================================
-  // 3. TỰ ĐỘNG ĐỒNG BỘ CHI PHÍ TẠM TÍNH (ESTIMATED INVOICE)
+  // 3. TÍNH NĂNG DÀNH CHO KỸ THUẬT VIÊN XÉT NGHIỆM / CĐHA
+  // ============================================================
+
+  /**
+   * Lấy danh sách các chỉ định CLS đang chờ thực hiện (Pending Queue)
+   * Tối ưu hóa: Sử dụng JOIN 1 lần (leftJoinAndSelect) để loại bỏ hoàn toàn N+1 query.
+   */
+  async getTechnicianQueue(query: TechnicianQueueQueryDto) {
+    const qb = this.serviceOrderRepo
+      .createQueryBuilder('order')
+      .leftJoinAndSelect('order.service', 'service')
+      .leftJoinAndSelect('order.examination', 'examination')
+      .leftJoinAndSelect('examination.patient', 'patient')
+      .leftJoinAndSelect('examination.doctor', 'doctor')
+      .leftJoinAndSelect('doctor.user', 'doctorUser');
+
+    // Lọc theo trạng thái (mặc định lấy PAID và ORDERED đang chờ thực hiện)
+    if (query.status) {
+      qb.andWhere('order.status = :status', { status: query.status });
+    } else {
+      qb.andWhere('order.status IN (:...statuses)', {
+        statuses: [ServiceOrderStatus.PAID, ServiceOrderStatus.ORDERED],
+      });
+    }
+
+    // Lọc theo loại dịch vụ (Xét nghiệm máu, Siêu âm, X-quang, Nội soi, v.v.)
+    if (query.serviceType) {
+      qb.andWhere('order.serviceType = :serviceType', { serviceType: query.serviceType });
+    }
+
+    // Lọc theo ngày
+    if (query.date) {
+      qb.andWhere('DATE(order.createdAt) = :date', { date: query.date });
+    }
+
+    // Tìm kiếm theo tên bệnh nhân, SĐT, mã bệnh nhân hoặc mã chỉ định
+    if (query.search) {
+      qb.andWhere(
+        '(LOWER(patient.fullName) LIKE LOWER(:search) OR patient.phone LIKE :search OR LOWER(order.orderNumber) LIKE LOWER(:search) OR LOWER(order.serviceName) LIKE LOWER(:search))',
+        { search: `%${query.search}%` },
+      );
+    }
+
+    // Sắp xếp ưu tiên: PAID lên trước (đã thanh toán thu tiền), sau đó ORDERED, theo thời gian tạo
+    qb.orderBy(
+      `CASE WHEN order.status = '${ServiceOrderStatus.PAID}' THEN 1 WHEN order.status = '${ServiceOrderStatus.ORDERED}' THEN 2 ELSE 3 END`,
+      'ASC',
+    ).addOrderBy('order.createdAt', 'ASC');
+
+    const page = query.page || 1;
+    const limit = query.limit || 50;
+    qb.skip((page - 1) * limit).take(limit);
+
+    const [items, total] = await qb.getManyAndCount();
+
+    const formattedQueue = items.map((order) => {
+      const patient = order.examination?.patient;
+      const doctor = order.examination?.doctor;
+
+      // Tính tuổi bệnh nhân
+      let age: number | undefined;
+      if (patient?.dateOfBirth) {
+        const birthYear = new Date(patient.dateOfBirth).getFullYear();
+        age = new Date().getFullYear() - birthYear;
+      }
+
+      return {
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        examinationId: order.examinationId,
+        serviceCode: order.serviceCode || order.service?.code,
+        serviceName: order.serviceName,
+        serviceType: order.serviceType,
+        department: order.service?.department || 'Phòng Cận lâm sàng',
+        fee: Number(order.fee),
+        status: order.status,
+        doctorNotes: order.notes,
+        createdAt: order.createdAt,
+        patient: patient
+          ? {
+              id: patient.id,
+              patientCode: patient.patientCode,
+              fullName: patient.fullName,
+              phone: patient.phone,
+              gender: patient.gender,
+              age,
+            }
+          : null,
+        doctor: doctor
+          ? {
+              id: doctor.id,
+              fullName: doctor.user?.fullName || 'Bác sĩ phụ trách',
+              roomNumber: doctor.roomNumber,
+            }
+          : null,
+      };
+    });
+
+    return {
+      queue: formattedQueue,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  /**
+   * Kỹ thuật viên nhập kết quả Cận lâm sàng chi tiết (Chỉ số, khoảng tham chiếu, ảnh đính kèm, kết luận)
+   * và tự động cập nhật trạng thái sang COMPLETED.
+   */
+  async enterResult(
+    orderId: string,
+    dto: EnterServiceOrderResultDto,
+    technicianUserId?: string,
+  ) {
+    const order = await this.serviceOrderRepo.findOne({
+      where: { id: orderId },
+      relations: ['examination'],
+    });
+
+    if (!order) {
+      throw new NotFoundError('Chỉ định cận lâm sàng');
+    }
+
+    // Cập nhật dữ liệu kết quả chi tiết
+    order.indicators = dto.indicators || [];
+    order.conclusion = dto.conclusion;
+    order.attachments = dto.attachments || [];
+    if (dto.resultFileUrl) {
+      order.resultFileUrl = dto.resultFileUrl;
+    }
+    if (dto.notes) {
+      order.notes = dto.notes;
+    }
+
+    // Tự động sinh tóm tắt vào `result` nếu chưa có
+    if (dto.result) {
+      order.result = dto.result;
+    } else {
+      const abnormalCount = order.indicators.filter((ind) => ind.isAbnormal).length;
+      let summary = `Kết luận: ${dto.conclusion}`;
+      if (order.indicators.length > 0) {
+        summary += ` (${order.indicators.length} chỉ số đo lường, ${abnormalCount} chỉ số bất thường)`;
+      }
+      order.result = summary;
+    }
+
+    // Chuyển trạng thái sang COMPLETED
+    order.status = ServiceOrderStatus.COMPLETED;
+    order.performedAt = new Date();
+    if (technicianUserId) {
+      order.performedByUserId = technicianUserId;
+    }
+
+    const saved = await this.serviceOrderRepo.save(order);
+    return saved;
+  }
+
+  // ============================================================
+  // 4. DÀNH CHO BÁC SĨ: XEM TOÀN BỘ KẾT QUẢ CLS NGAY TRÊN MÀN HÌNH KHÁM
+  // ============================================================
+
+  /**
+   * Bác sĩ điều trị xem lại toàn bộ kết quả CLS vừa cập nhật ngay trên màn hình khám bệnh
+   * Hiển thị cảnh báo chỉ số bất thường, hình ảnh đính kèm, kết luận chi tiết.
+   */
+  async getDoctorExaminationResults(examinationId: string) {
+    const examination = await this.examRepo.findOne({
+      where: { id: examinationId },
+      relations: ['appointment', 'patient', 'doctor', 'doctor.user'],
+    });
+
+    if (!examination) {
+      throw new NotFoundError('Phiếu khám bệnh');
+    }
+
+    // Query toàn bộ chỉ định CLS kèm Service trong 1 câu truy vấn chống N+1
+    const orders = await this.serviceOrderRepo.find({
+      where: { examinationId },
+      relations: ['service'],
+      order: { createdAt: 'ASC' },
+    });
+
+    // Thống kê tổng hợp
+    const totalOrders = orders.length;
+    const completedOrders = orders.filter((o) => o.status === ServiceOrderStatus.COMPLETED);
+    const completedCount = completedOrders.length;
+    const isAllCompleted = totalOrders > 0 && completedCount === totalOrders;
+
+    // Đếm tổng số chỉ số bất thường trên tất cả xét nghiệm
+    let totalAbnormalIndicators = 0;
+
+    const formattedOrders = orders.map((order) => {
+      const indicators = order.indicators || [];
+      const abnormalList = indicators.filter((ind) => ind.isAbnormal);
+      totalAbnormalIndicators += abnormalList.length;
+
+      return {
+        id: order.id,
+        orderNumber: order.orderNumber,
+        serviceName: order.serviceName,
+        serviceCode: order.serviceCode || order.service?.code,
+        serviceType: order.serviceType,
+        department: order.service?.department,
+        fee: Number(order.fee),
+        status: order.status,
+        performedAt: order.performedAt,
+        performedByUserId: order.performedByUserId,
+        conclusion: order.conclusion || order.result,
+        resultSummary: order.result,
+        resultFileUrl: order.resultFileUrl,
+        attachments: order.attachments || [],
+        indicators: indicators.map((ind) => ({
+          name: ind.name,
+          value: ind.value,
+          unit: ind.unit || '',
+          normalRange: ind.normalRange || 'N/A',
+          isAbnormal: ind.isAbnormal,
+        })),
+        hasAbnormal: abnormalList.length > 0,
+        abnormalCount: abnormalList.length,
+      };
+    });
+
+    return {
+      examinationId: examination.id,
+      patient: examination.patient,
+      appointmentId: examination.appointmentId,
+      summary: {
+        totalOrders,
+        completedCount,
+        pendingCount: totalOrders - completedCount,
+        isAllCompleted,
+        totalAbnormalIndicators,
+      },
+      results: formattedOrders,
+    };
+  }
+
+  // ============================================================
+  // 5. TỰ ĐỘNG ĐỒNG BỘ CHI PHÍ TẠM TÍNH (ESTIMATED INVOICE)
   // ============================================================
 
   /**
@@ -321,7 +565,7 @@ export class ServiceOrdersService {
 
     const appointmentId = examination.appointmentId;
 
-    // 1. Tính tổng phí CLS hiện tại (chỉ lấy các chỉ định còn hiệu lực: ORDERED, PAID, IN_PROGRESS, COMPLETED)
+    // Tính tổng phí CLS hiện tại (chỉ lấy các chỉ định còn hiệu lực)
     const activeOrders = await this.serviceOrderRepo.find({
       where: { examinationId },
     });
@@ -330,7 +574,7 @@ export class ServiceOrdersService {
       .filter((o) => o.status !== ServiceOrderStatus.CANCELLED)
       .reduce((sum, o) => sum + Number(o.fee), 0);
 
-    // 2. Lấy phí khám cơ bản của Bác sĩ
+    // Lấy phí khám cơ bản của Bác sĩ
     let consultationFee = 200000;
     if (examination.doctor?.consultationFee) {
       consultationFee = Number(examination.doctor.consultationFee);
@@ -341,7 +585,7 @@ export class ServiceOrdersService {
       }
     }
 
-    // 3. Tìm hoặc khởi tạo bản ghi Invoice tạm tính
+    // Tìm hoặc khởi tạo bản ghi Invoice tạm tính
     let invoice = await this.invoiceRepo.findOne({
       where: { appointmentId },
     });
@@ -364,7 +608,6 @@ export class ServiceOrdersService {
         notes: 'Hóa đơn tạm tính tự động đồng bộ từ phòng khám & chỉ định CLS',
       });
     } else {
-      // Đã có hóa đơn: Cập nhật phí CLS và tính lại tổng tiền
       invoice.consultationFee = consultationFee;
       invoice.serviceFee = totalServiceFee;
 

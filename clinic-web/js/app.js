@@ -1155,8 +1155,41 @@ function renderDoctorExamination() {
   
   if (!AppState.examination.clsOrders || AppState.examination.clsOrders.length === 0) {
     AppState.examination.clsOrders = [
-      { id: 1, code: 'XN_CBC', name: 'Tổng phân tích tế bào máu ngoại vi (CBC)', price: 150000, type: 'Xét nghiệm', status: 'ORDERED', result: null },
-      { id: 3, code: 'SA_OB', name: 'Siêu âm ổ bụng tổng quát màu', price: 250000, type: 'Siêu âm', status: 'PAID', result: 'Gan, mật, tụy, lách, 2 thận hình thái bình thường. Không thấy sỏi hoặc dịch tự do.' }
+      {
+        id: 1,
+        code: 'XN_CBC',
+        name: 'Tổng phân tích tế bào máu ngoại vi (CBC)',
+        price: 150000,
+        type: 'Xét nghiệm',
+        status: 'COMPLETED',
+        conclusion: 'Tăng nhẹ bạch cầu đa nhân trung tính. Không thấy thiếu máu.',
+        result: 'Bạch cầu tăng nhẹ (12.5 G/L), hồng cầu và tiểu cầu trong giới hạn bình thường.',
+        resultFileUrl: 'https://medicare.vn/results/CBC-20260914.pdf',
+        attachments: [],
+        indicators: [
+          { name: 'Số lượng Hồng cầu (RBC)', value: '4.85', unit: 'T/L', normalRange: '4.0 - 5.5', isAbnormal: false },
+          { name: 'Số lượng Bạch cầu (WBC)', value: '12.4', unit: 'G/L', normalRange: '4.0 - 10.0', isAbnormal: true },
+          { name: 'Huyết sắc tố (Hb)', value: '142', unit: 'g/L', normalRange: '120 - 165', isAbnormal: false },
+          { name: 'Số lượng Tiểu cầu (PLT)', value: '235', unit: 'G/L', normalRange: '150 - 450', isAbnormal: false }
+        ]
+      },
+      {
+        id: 3,
+        code: 'SA_OB',
+        name: 'Siêu âm ổ bụng tổng quát màu',
+        price: 250000,
+        type: 'Siêu âm',
+        status: 'COMPLETED',
+        conclusion: 'Gan, mật, tụy, lách, 2 thận hình thái bình thường. Không thấy sỏi hoặc khối u khu trú. Không có dịch tự do ổ bụng.',
+        result: 'Các tạng trong ổ bụng trong giới hạn bình thường.',
+        resultFileUrl: 'https://medicare.vn/results/SA-20260914.pdf',
+        attachments: ['https://images.unsplash.com/photo-1579154204601-01588f351e67?w=600&auto=format&fit=crop&q=60'],
+        indicators: [
+          { name: 'Nhu mô gan', value: 'Đồng nhất', unit: '', normalRange: 'Đồng nhất, bờ đều', isAbnormal: false },
+          { name: 'Túi mật', value: 'Thành mỏng, không sỏi', unit: '', normalRange: 'Thành mỏng < 3mm', isAbnormal: false },
+          { name: 'Dịch tự do ổ bụng', value: 'Âm tính', unit: '', normalRange: 'Không có', isAbnormal: false }
+        ]
+      }
     ];
   }
   if (!AppState.examination.prescriptions) {
@@ -1320,8 +1353,8 @@ function renderDoctorExamination() {
         <div class="card animate-in animate-in-delay-1" style="margin-bottom: 1.5rem;">
           <div class="flex items-center justify-between" style="margin-bottom: 1rem;">
             <div>
-              <h4 style="margin: 0;">🔬 Chỉ định Cận lâm sàng (CLS)</h4>
-              <div class="text-xs text-muted" style="margin-top: 0.2rem;">Xét nghiệm • Siêu âm • X-Quang • Nội soi</div>
+              <h4 style="margin: 0;">🔬 Chỉ định Cận lâm sàng & Kết quả CLS</h4>
+              <div class="text-xs text-muted" style="margin-top: 0.2rem;">Kỹ thuật viên trả kết quả trực tiếp về màn hình bác sĩ khám</div>
             </div>
             <button class="btn btn-outline btn-sm" onclick="openAddClsModal()">+ Thêm chỉ định CLS</button>
           </div>
@@ -1333,8 +1366,10 @@ function renderDoctorExamination() {
                 ? '<span class="badge badge-info" style="font-size:0.75rem;">💳 PAID (Đã thu tiền)</span>'
                 : '<span class="badge badge-warning" style="font-size:0.75rem;">⏳ ORDERED (Chờ thu tiền)</span>';
 
+              const hasAbnormal = cls.indicators && cls.indicators.some(i => i.isAbnormal);
+
               return `
-              <div class="prescription-item" style="flex-direction: column; align-items: stretch; gap: 0.5rem;">
+              <div class="prescription-item" style="flex-direction: column; align-items: stretch; gap: 0.6rem; border-left: 4px solid ${cls.status === 'COMPLETED' ? (hasAbnormal ? '#ef4444' : '#22c55e') : cls.status === 'PAID' ? '#0284c7' : '#f59e0b'};">
                 <div class="flex justify-between items-center">
                   <div>
                     <strong style="color: var(--text-primary); font-size: 0.95rem;">${cls.name}</strong>
@@ -1345,11 +1380,59 @@ function renderDoctorExamination() {
                     <span class="med-remove" title="Hủy chỉ định" onclick="removeClsOrder(${index})">✕</span>
                   </div>
                 </div>
-                ${cls.result ? `
-                  <div style="background: rgba(34, 197, 94, 0.08); border-left: 3px solid #22c55e; padding: 0.4rem 0.6rem; border-radius: 4px; font-size: 0.82rem;">
-                    <strong>Kết quả:</strong> ${cls.result}
+
+                ${cls.status === 'COMPLETED' ? `
+                  <!-- Kết quả chi tiết dành cho bác sĩ -->
+                  <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-color); border-radius: 6px; padding: 0.75rem;">
+                    ${cls.conclusion ? `
+                      <div style="margin-bottom: 0.5rem; font-size: 0.88rem;">
+                        <strong style="color: var(--primary-300);">📋 Kết luận:</strong> ${cls.conclusion}
+                        ${hasAbnormal ? '<span class="badge badge-danger" style="margin-left: 0.5rem; font-size: 0.7rem;">⚠️ Có chỉ số bất thường</span>' : ''}
+                      </div>
+                    ` : ''}
+
+                    ${cls.indicators && cls.indicators.length > 0 ? `
+                      <div style="overflow-x: auto; margin-top: 0.4rem;">
+                        <table style="width: 100%; font-size: 0.8rem; border-collapse: collapse;">
+                          <thead>
+                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.1); color: var(--text-muted); text-align: left;">
+                              <th style="padding: 0.25rem 0.5rem;">Chỉ số đo lường</th>
+                              <th style="padding: 0.25rem 0.5rem;">Kết quả</th>
+                              <th style="padding: 0.25rem 0.5rem;">Đơn vị</th>
+                              <th style="padding: 0.25rem 0.5rem;">Khoảng tham chiếu</th>
+                              <th style="padding: 0.25rem 0.5rem;">Đánh giá</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            ${cls.indicators.map(ind => `
+                              <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); ${ind.isAbnormal ? 'background: rgba(239, 68, 68, 0.1);' : ''}">
+                                <td style="padding: 0.35rem 0.5rem; font-weight: ${ind.isAbnormal ? '700' : '500'};">${ind.name}</td>
+                                <td style="padding: 0.35rem 0.5rem; font-weight: 700; color: ${ind.isAbnormal ? '#ef4444' : 'inherit'};">${ind.value}</td>
+                                <td style="padding: 0.35rem 0.5rem; color: var(--text-muted);">${ind.unit || '-'}</td>
+                                <td style="padding: 0.35rem 0.5rem; color: var(--text-muted);">${ind.normalRange || '-'}</td>
+                                <td style="padding: 0.35rem 0.5rem;">
+                                  ${ind.isAbnormal ? '<span class="badge badge-danger" style="font-size:0.65rem;">Cao/Bất thường</span>' : '<span class="badge badge-success" style="font-size:0.65rem;">Bình thường</span>'}
+                                </td>
+                              </tr>
+                            `).join('')}
+                          </tbody>
+                        </table>
+                      </div>
+                    ` : ''}
+
+                    ${cls.attachments && cls.attachments.length > 0 ? `
+                      <div style="margin-top: 0.6rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                        <span class="text-xs text-muted">📸 Hình ảnh cận lâm sàng đính kèm:</span>
+                        ${cls.attachments.map((imgUrl, i) => `
+                          <a href="${imgUrl}" target="_blank" style="display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.75rem; color: var(--primary-300); text-decoration: underline; background: rgba(13,148,136,0.1); padding: 0.2rem 0.5rem; border-radius: 4px;">
+                            🖼️ Xem ảnh ${i + 1}
+                          </a>
+                        `).join('')}
+                      </div>
+                    ` : ''}
                   </div>
                 ` : ''}
+
                 <div class="flex justify-end gap-sm" style="margin-top: 0.2rem;">
                   ${cls.status === 'ORDERED' ? `
                     <button class="btn btn-secondary btn-sm" style="font-size:0.75rem; padding: 0.2rem 0.5rem;" onclick="payClsOrder(${index})">
@@ -1357,11 +1440,11 @@ function renderDoctorExamination() {
                     </button>
                   ` : cls.status === 'PAID' ? `
                     <button class="btn btn-primary btn-sm" style="font-size:0.75rem; padding: 0.2rem 0.5rem;" onclick="enterClsResult(${index})">
-                      📝 Nhập kết quả CLS (COMPLETED)
+                      📝 KTV Nhập kết quả (COMPLETED)
                     </button>
                   ` : `
                     <button class="btn btn-outline btn-sm" style="font-size:0.75rem; padding: 0.2rem 0.5rem;" onclick="enterClsResult(${index})">
-                      ✏️ Sửa kết quả
+                      ✏️ Cập nhật kết quả KTV
                     </button>
                   `}
                 </div>
@@ -2496,18 +2579,39 @@ function payClsOrder(index) {
 function enterClsResult(index) {
   const cls = AppState.examination.clsOrders[index];
   if (cls) {
-    const defaultRes = cls.type === 'Xét nghiệm' 
-      ? 'Hồng cầu: 4.8 M/μL, Bạch cầu: 6.8 K/μL, Tiểu cầu: 240 K/μL (Bình thường)'
+    const defaultConclusion = cls.type === 'Xét nghiệm'
+      ? 'Tăng nhẹ bạch cầu đa nhân trung tính nghi ngờ nhiễm trùng cấp'
       : cls.type === 'Siêu âm'
-      ? 'Cấu trúc giải phẫu bình thường, không ghi nhận tổn thương khu trú.'
-      : 'Hình ảnh tim phổi và xương khớp trong giới hạn bình thường.';
+      ? 'Hình thái gan mật tụy lách 2 thận bình thường, không có dịch tự do'
+      : 'Hình ảnh tim phổi trong giới hạn bình thường';
 
-    const res = prompt(`Nhập kết quả Cận lâm sàng cho [${cls.name}]:`, cls.result || defaultRes);
-    if (res !== null) {
-      cls.result = res;
+    const conclusion = prompt(`[KỸ THUẬT VIÊN] Nhập mô tả chi tiết & kết luận cho [${cls.name}]:`, cls.conclusion || defaultConclusion);
+    if (conclusion !== null) {
+      cls.conclusion = conclusion;
       cls.status = 'COMPLETED';
+
+      // Tạo mẫu chỉ số kèm khoảng tham chiếu
+      if (!cls.indicators || cls.indicators.length === 0) {
+        if (cls.type === 'Xét nghiệm') {
+          cls.indicators = [
+            { name: 'Số lượng Hồng cầu (RBC)', value: '4.8', unit: 'T/L', normalRange: '4.0 - 5.5', isAbnormal: false },
+            { name: 'Số lượng Bạch cầu (WBC)', value: '11.8', unit: 'G/L', normalRange: '4.0 - 10.0', isAbnormal: true },
+            { name: 'Huyết sắc tố (Hb)', value: '140', unit: 'g/L', normalRange: '120 - 165', isAbnormal: false }
+          ];
+        } else {
+          cls.indicators = [
+            { name: 'Cấu trúc hình thái giải phẫu', value: 'Bình thường', unit: '', normalRange: 'Bình thường', isAbnormal: false },
+            { name: 'Tổn thương khu trú / Dịch', value: 'Không phát hiện', unit: '', normalRange: 'Âm tính', isAbnormal: false }
+          ];
+        }
+      }
+
+      if (!cls.attachments || cls.attachments.length === 0) {
+        cls.attachments = ['https://images.unsplash.com/photo-1579154204601-01588f351e67?w=600&auto=format&fit=crop&q=60'];
+      }
+
       render();
-      showToast(`✅ Đã cập nhật kết quả cho [${cls.name}]! Trạng thái chuyển sang COMPLETED.`, 'success');
+      showToast(`✅ Kỹ thuật viên đã cập nhật kết quả CLS thành công! Bác sĩ có thể xem ngay trên màn hình.`, 'success');
     }
   }
 }

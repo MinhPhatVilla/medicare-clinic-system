@@ -14,6 +14,8 @@ import {
   updateServiceOrderStatusSchema,
   payServiceOrdersSchema,
   createMedicalServiceSchema,
+  enterServiceOrderResultSchema,
+  technicianQueueQuerySchema,
 } from './service-orders.dto';
 
 const router = Router();
@@ -46,7 +48,35 @@ router.post(
 );
 
 // ============================================================
-// SERVICE ORDERS (CHỈ ĐỊNH CẬN LÂM SÀNG)
+// KỸ THUẬT VIÊN XÉT NGHIỆM / CHẨN ĐOÁN HÌNH ẢNH (TECHNICIAN)
+// ============================================================
+
+/**
+ * @route   GET /api/v1/service-orders/technician/queue
+ * @desc    Lấy danh sách các chỉ định CLS đang chờ thực hiện (Pending Queue)
+ * @access  TECHNICIAN, DOCTOR, ADMIN
+ */
+router.get(
+  '/technician/queue',
+  roleGuard(UserRole.TECHNICIAN, UserRole.DOCTOR, UserRole.ADMIN),
+  validate(technicianQueueQuerySchema, 'query'),
+  controller.getTechnicianQueue,
+);
+
+/**
+ * @route   POST /api/v1/service-orders/:id/result
+ * @desc    Kỹ thuật viên nhập kết quả CLS chi tiết (chỉ số, khoảng tham chiếu, ảnh đính kèm) & hoàn thành (COMPLETED)
+ * @access  TECHNICIAN, DOCTOR, ADMIN
+ */
+router.post(
+  '/:id/result',
+  roleGuard(UserRole.TECHNICIAN, UserRole.DOCTOR, UserRole.ADMIN),
+  validate(enterServiceOrderResultSchema),
+  controller.enterResult,
+);
+
+// ============================================================
+// SERVICE ORDERS (BÁC SĨ & ĐIỀU TRỊ)
 // ============================================================
 
 /**
@@ -59,6 +89,17 @@ router.post(
   roleGuard(UserRole.DOCTOR, UserRole.ADMIN),
   validate(createServiceOrdersSchema),
   controller.createOrders,
+);
+
+/**
+ * @route   GET /api/v1/service-orders/examination/:examinationId/results
+ * @desc    Bác sĩ điều trị xem lại toàn bộ kết quả CLS vừa cập nhật ngay trên màn hình khám bệnh
+ * @access  DOCTOR, TECHNICIAN, ADMIN, PATIENT
+ */
+router.get(
+  '/examination/:examinationId/results',
+  roleGuard(UserRole.DOCTOR, UserRole.TECHNICIAN, UserRole.ADMIN, UserRole.PATIENT),
+  controller.getDoctorExaminationResults,
 );
 
 /**
@@ -83,11 +124,17 @@ router.post(
 /**
  * @route   PATCH /api/v1/service-orders/:id/status
  * @desc    Cập nhật trạng thái chỉ định CLS (PAID, IN_PROGRESS, COMPLETED kèm kết quả, CANCELLED)
- * @access  DOCTOR, RECEPTIONIST, CASHIER, ADMIN
+ * @access  DOCTOR, RECEPTIONIST, CASHIER, TECHNICIAN, ADMIN
  */
 router.patch(
   '/:id/status',
-  roleGuard(UserRole.DOCTOR, UserRole.RECEPTIONIST, UserRole.CASHIER, UserRole.ADMIN),
+  roleGuard(
+    UserRole.DOCTOR,
+    UserRole.RECEPTIONIST,
+    UserRole.CASHIER,
+    UserRole.TECHNICIAN,
+    UserRole.ADMIN,
+  ),
   validate(updateServiceOrderStatusSchema),
   controller.updateOrderStatus,
 );

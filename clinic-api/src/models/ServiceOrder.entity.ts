@@ -83,14 +83,39 @@ export class ServiceOrder {
   serviceType: ServiceType;
 
   /**
-   * result: Kết quả xét nghiệm (text mô tả hoặc JSON structured data)
+   * result: Kết quả xét nghiệm tổng quan (text mô tả hoặc tóm tắt)
    * VD: "Hồng cầu: 4.5 M/μL (BT: 4.2-5.4)\nBạch cầu: 7.2 K/μL (BT: 4.5-11.0)"
    */
   @Column({ type: 'text', nullable: true })
   result: string;
 
+  /**
+   * indicators: Giá trị chỉ số chi tiết kèm khoảng tham chiếu bình thường/bất thường
+   * Mảng JSON: [{ name: string, value: string, unit?: string, normalRange?: string, isAbnormal: boolean }]
+   */
+  @Column({ type: 'jsonb', nullable: true })
+  indicators: Array<{
+    name: string;
+    value: string | number;
+    unit?: string;
+    normalRange?: string;
+    isAbnormal: boolean;
+  }>;
+
+  /**
+   * conclusion: Mô tả chi tiết & kết luận của Kỹ thuật viên / Bác sĩ CĐHA
+   */
+  @Column({ type: 'text', nullable: true })
+  conclusion: string;
+
   @Column({ name: 'result_file_url', type: 'text', nullable: true })
-  resultFileUrl: string; // URL file kết quả (PDF, ảnh X-quang)
+  resultFileUrl: string; // URL file kết quả chính (PDF, ảnh kết quả)
+
+  /**
+   * attachments: Danh sách các link file hình ảnh kết quả đính kèm (ảnh X-quang, ảnh siêu âm, ảnh nội soi)
+   */
+  @Column({ type: 'jsonb', nullable: true })
+  attachments: string[];
 
   @Index('idx_so_status')
   @Column({ type: 'enum', enum: ServiceOrderStatus, default: ServiceOrderStatus.ORDERED })
@@ -101,6 +126,9 @@ export class ServiceOrder {
 
   @Column({ name: 'performed_at', type: 'timestamp', nullable: true })
   performedAt: Date; // Thời điểm thực hiện xét nghiệm
+
+  @Column({ name: 'performed_by_user_id', nullable: true })
+  performedByUserId: string; // ID Kỹ thuật viên xét nghiệm/chẩn đoán hình ảnh thực hiện
 
   @Column({ type: 'text', nullable: true })
   notes: string; // Ghi chú của bác sĩ (VD: "Nhịn ăn 8h trước khi lấy máu")

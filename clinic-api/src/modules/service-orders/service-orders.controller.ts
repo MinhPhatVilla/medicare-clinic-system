@@ -35,7 +35,7 @@ export class ServiceOrdersController {
   };
 
   // ============================================================
-  // SERVICE ORDERS
+  // SERVICE ORDERS (BÁC SĨ CHỈ ĐỊNH)
   // ============================================================
 
   /**
@@ -61,7 +61,16 @@ export class ServiceOrdersController {
   };
 
   /**
-   * PATCH /api/v1/service-orders/:id/status - Cập nhật trạng thái chỉ định CLS (PAID, COMPLETED, CANCELLED)
+   * GET /api/v1/service-orders/examination/:examinationId/results - Bác sĩ xem kết quả CLS trên màn hình khám bệnh
+   */
+  getDoctorExaminationResults = async (req: Request, res: Response) => {
+    const { examinationId } = req.params;
+    const result = await this.serviceOrdersService.getDoctorExaminationResults(examinationId);
+    ApiResponse.success(res, result, 'Lấy kết quả cận lâm sàng của bệnh nhân thành công');
+  };
+
+  /**
+   * PATCH /api/v1/service-orders/:id/status - Cập nhật trạng thái chỉ định CLS
    */
   updateOrderStatus = async (req: Request, res: Response) => {
     const { id } = req.params;
@@ -93,5 +102,35 @@ export class ServiceOrdersController {
     const { id } = req.params;
     const result = await this.serviceOrdersService.cancelOrder(id);
     ApiResponse.success(res, result, 'Đã hủy chỉ định cận lâm sàng thành công');
+  };
+
+  // ============================================================
+  // KỸ THUẬT VIÊN XÉT NGHIỆM / CHẨN ĐOÁN HÌNH ẢNH
+  // ============================================================
+
+  /**
+   * GET /api/v1/service-orders/technician/queue - Lấy danh sách chỉ định CLS đang chờ thực hiện
+   */
+  getTechnicianQueue = async (req: Request, res: Response) => {
+    const result = await this.serviceOrdersService.getTechnicianQueue(req.query as any);
+    ApiResponse.success(res, result, 'Lấy hàng đợi chỉ định cận lâm sàng thành công');
+  };
+
+  /**
+   * POST /api/v1/service-orders/:id/result - Kỹ thuật viên nhập kết quả CLS chi tiết
+   */
+  enterResult = async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const technicianUserId = req.user?.id;
+    const result = await this.serviceOrdersService.enterResult(
+      id,
+      req.body,
+      technicianUserId,
+    );
+    ApiResponse.success(
+      res,
+      result,
+      'Nhập kết quả cận lâm sàng thành công. Trạng thái chuyển sang COMPLETED.',
+    );
   };
 }

@@ -31,6 +31,7 @@ export enum UserRole {
   RECEPTIONIST = 'RECEPTIONIST',
   CASHIER = 'CASHIER',
   ADMIN = 'ADMIN',
+  TECHNICIAN = 'TECHNICIAN', // Kỹ thuật viên xét nghiệm / Chẩn đoán hình ảnh
 }
 
 @Index('idx_users_role', ['role'])

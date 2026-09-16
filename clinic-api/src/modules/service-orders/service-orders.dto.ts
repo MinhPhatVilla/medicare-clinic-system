@@ -93,6 +93,73 @@ export const payServiceOrdersSchema = z.object({
 export type PayServiceOrdersDto = z.infer<typeof payServiceOrdersSchema>;
 
 /**
+ * Schema từng chỉ số xét nghiệm đo lường kèm khoảng tham chiếu
+ */
+export const indicatorItemSchema = z.object({
+  name: z
+    .string({ required_error: 'Tên chỉ số xét nghiệm là bắt buộc' })
+    .trim()
+    .min(1, 'Tên chỉ số không được để trống'),
+  value: z.union([z.string(), z.number()], {
+    required_error: 'Giá trị chỉ số là bắt buộc',
+  }),
+  unit: z.string().trim().optional(),
+  normalRange: z.string().trim().optional(),
+  isAbnormal: z.boolean().default(false),
+});
+
+export type IndicatorItemDto = z.infer<typeof indicatorItemSchema>;
+
+/**
+ * Schema Kỹ thuật viên nhập kết quả Cận lâm sàng chi tiết
+ */
+export const enterServiceOrderResultSchema = z.object({
+  indicators: z.array(indicatorItemSchema).optional(),
+  conclusion: z
+    .string({ required_error: 'Mô tả chi tiết hoặc kết luận là bắt buộc' })
+    .trim()
+    .min(3, 'Kết luận/mô tả chi tiết phải có ít nhất 3 ký tự')
+    .max(2000, 'Kết luận/mô tả tối đa 2000 ký tự'),
+  result: z.string().trim().optional(),
+  resultFileUrl: z
+    .string()
+    .trim()
+    .url('Đường dẫn file kết quả chính phải là URL hợp lệ')
+    .optional()
+    .or(z.literal('')),
+  attachments: z
+    .array(z.string().trim().url('Đường dẫn ảnh đính kèm phải là URL hợp lệ'))
+    .optional()
+    .default([]),
+  notes: z.string().trim().max(500).optional(),
+});
+
+export type EnterServiceOrderResultDto = z.infer<typeof enterServiceOrderResultSchema>;
+
+/**
+ * Schema tra cứu hàng đợi chỉ định CLS chờ thực hiện của Kỹ thuật viên
+ */
+export const technicianQueueQuerySchema = z.object({
+  serviceType: z.nativeEnum(ServiceType).optional(),
+  status: z.nativeEnum(ServiceOrderStatus).optional(),
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Định dạng ngày phải là YYYY-MM-DD')
+    .optional(),
+  search: z.string().trim().optional(),
+  page: z
+    .string()
+    .optional()
+    .transform((v) => (v ? Math.max(1, parseInt(v, 10)) : 1)),
+  limit: z
+    .string()
+    .optional()
+    .transform((v) => (v ? Math.min(100, Math.max(1, parseInt(v, 10))) : 50)),
+});
+
+export type TechnicianQueueQueryDto = z.infer<typeof technicianQueueQuerySchema>;
+
+/**
  * Schema tra cứu danh mục dịch vụ kỹ thuật (Service Catalog)
  */
 export const serviceCatalogQuerySchema = z.object({
@@ -138,3 +205,4 @@ export const createMedicalServiceSchema = z.object({
 });
 
 export type CreateMedicalServiceDto = z.infer<typeof createMedicalServiceSchema>;
+
