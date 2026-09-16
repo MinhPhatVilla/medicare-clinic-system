@@ -46,14 +46,14 @@ const MOCK_DATA = {
     { id: 9, code: 'NS_DT', name: 'Nội soi đại trực tràng toàn bộ gây mê', price: 1800000, type: 'Nội soi', dept: 'TT Nội soi tiêu hóa' },
   ],
   medicines: [
-    { id: 1, name: 'Omeprazol 20mg', unit: 'Viên', price: 2500, group: 'Tiêu hóa' },
-    { id: 2, name: 'Domperidon 10mg', unit: 'Viên', price: 1500, group: 'Tiêu hóa' },
-    { id: 3, name: 'Paracetamol 500mg', unit: 'Viên', price: 1000, group: 'Giảm đau' },
-    { id: 4, name: 'Amoxicillin 500mg', unit: 'Viên', price: 3000, group: 'Kháng sinh' },
-    { id: 5, name: 'Losartan 50mg', unit: 'Viên', price: 4000, group: 'Tim mạch' },
-    { id: 6, name: 'Diclofenac 50mg', unit: 'Viên', price: 2000, group: 'Kháng viêm' },
-    { id: 7, name: 'Cetirizin 10mg', unit: 'Viên', price: 1800, group: 'Dị ứng' },
-    { id: 8, name: 'Vitamin B Complex', unit: 'Viên', price: 1200, group: 'Vitamin' },
+    { id: 1, code: 'TH_OMEP_20', name: 'Omeprazol 20mg', active: 'Omeprazole', unit: 'Viên', price: 2500, group: 'Tiêu hóa', usage: 'Uống trước bữa ăn sáng 30 phút' },
+    { id: 2, code: 'TH_DOMP_10', name: 'Domperidon 10mg', active: 'Domperidone', unit: 'Viên', price: 1500, group: 'Tiêu hóa', usage: 'Uống trước ăn 15 phút khi đầy bụng' },
+    { id: 3, code: 'TH_PARA_500', name: 'Paracetamol 500mg', active: 'Paracetamol', unit: 'Viên', price: 1000, group: 'Giảm đau hạ sốt', usage: 'Uống sau ăn khi đau hoặc sốt > 38.5°C' },
+    { id: 4, code: 'TH_AMOX_500', name: 'Amoxicillin 500mg', active: 'Amoxicillin', unit: 'Viên', price: 3000, group: 'Kháng sinh', usage: 'Uống sau ăn no, đủ liệu trình 7 ngày' },
+    { id: 5, code: 'TH_LOSA_50', name: 'Losartan 50mg', active: 'Losartan potassium', unit: 'Viên', price: 4000, group: 'Tim mạch', usage: 'Uống 1 viên vào buổi sáng mỗi ngày' },
+    { id: 6, code: 'TH_DICL_50', name: 'Diclofenac 50mg', active: 'Diclofenac sodium', unit: 'Viên', price: 2000, group: 'Kháng viêm', usage: 'Uống sau ăn no kèm nhiều nước' },
+    { id: 7, code: 'TH_CETI_10', name: 'Cetirizin 10mg', active: 'Cetirizine HCl', unit: 'Viên', price: 1800, group: 'Dị ứng', usage: 'Uống 1 viên buổi tối trước khi đi ngủ' },
+    { id: 8, code: 'TH_VITB_COMP', name: 'Vitamin B Complex', active: 'Vitamin B1, B6, B12', unit: 'Viên', price: 1200, group: 'Bổ thần kinh', usage: 'Uống sau bữa ăn sáng' },
   ],
   appointments: [
     { id: 1, patient: 'Nguyễn Văn An', doctor: 'TS.BS Trần Thị Minh', specialty: 'Nội khoa', date: '2026-09-13', time: '08:00', status: 'confirmed', code: 'LH-20260913-001' },
@@ -1461,17 +1461,36 @@ function renderDoctorExamination() {
         <!-- Prescriptions -->
         <div class="card animate-in animate-in-delay-2">
           <div class="flex items-center justify-between" style="margin-bottom: 1rem;">
-            <h4>💊 Đơn thuốc điện tử</h4>
-            <button class="btn btn-outline btn-sm" onclick="openAddMedicineModal()">+ Thêm thuốc</button>
+            <div>
+              <h4 style="margin: 0;">💊 Đơn thuốc điện tử</h4>
+              <div class="text-xs text-muted" style="margin-top: 0.2rem;">Kê đơn chuẩn hóa: Liều dùng Sáng/Trưa/Chiều/Tối & Cách dùng</div>
+            </div>
+            ${patient.isLocked ? `
+              <span class="badge badge-danger" style="font-size: 0.75rem;">🔒 ĐÃ KHÓA HỒ SƠ</span>
+            ` : `
+              <button class="btn btn-outline btn-sm" onclick="openAddMedicineModal()">+ Thêm thuốc</button>
+            `}
           </div>
           <div class="prescription-list">
             ${AppState.examination.prescriptions.map((med, index) => `
-              <div class="prescription-item">
-                <div>
-                  <div class="med-name">${med.name}</div>
-                  <div class="med-detail">${med.dose} • <strong>${med.price.toLocaleString()} VNĐ</strong></div>
+              <div class="prescription-item" style="flex-direction: column; align-items: stretch; gap: 0.4rem;">
+                <div class="flex justify-between items-center">
+                  <div>
+                    <strong style="color: var(--text-primary); font-size: 0.95rem;">${index + 1}. ${med.name}</strong>
+                    ${med.active ? `<span class="text-xs text-muted" style="margin-left: 0.5rem;">(HC: ${med.active})</span>` : ''}
+                  </div>
+                  <div class="flex items-center gap-sm">
+                    <span class="badge badge-secondary" style="font-size:0.75rem;">${med.qty} ${med.unit}</span>
+                    <strong style="color: var(--primary-300);">${med.price.toLocaleString()} đ</strong>
+                    ${!patient.isLocked ? `
+                      <span class="med-remove" title="Xóa thuốc" onclick="removeMedicine(${index})">✕</span>
+                    ` : ''}
+                  </div>
                 </div>
-                <span class="med-remove" onclick="removeMedicine(${index})">✕</span>
+                <div style="font-size: 0.82rem; color: var(--text-muted); background: rgba(255,255,255,0.03); padding: 0.35rem 0.6rem; border-radius: 4px;">
+                  <div>⏰ <strong>Liều dùng:</strong> ${med.doseDetail || med.dose}</div>
+                  ${med.usage ? `<div>📌 <strong>Cách dùng:</strong> ${med.usage}</div>` : ''}
+                </div>
               </div>
             `).join('')}
           </div>
@@ -1482,12 +1501,19 @@ function renderDoctorExamination() {
 
           <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
             <div style="display:flex; justify-content:space-between; margin-bottom:0.75rem; font-size:0.95rem;">
-              <span>Tổng viện phí dự kiến:</span>
+              <span>Tổng viện phí toàn bộ (Khám + CLS + Thuốc):</span>
               <strong style="color:var(--primary-300); font-size:1.15rem;">${(200000 + totalCls + totalMeds).toLocaleString()} VNĐ</strong>
             </div>
-            <button class="btn btn-primary btn-lg w-full" onclick="completeExamination(${patient.id})">
-              🚀 Hoàn tất ca khám & Chuyển Thu ngân
-            </button>
+            ${patient.isLocked ? `
+              <div style="background: rgba(34, 197, 94, 0.1); border: 1px solid #22c55e; border-radius: 6px; padding: 0.75rem; text-align: center; color: #4ade80;">
+                ✅ <strong>Ca khám đã hoàn tất & Hồ sơ đã được khóa an toàn!</strong>
+                <div style="font-size: 0.82rem; margin-top: 0.25rem;">Dữ liệu bảng kê viện phí đã chuyển sang Quầy Thu ngân.</div>
+              </div>
+            ` : `
+              <button class="btn btn-primary btn-lg w-full" onclick="completeExamination(${patient.id})">
+                🚀 Hoàn tất ca khám, Khóa hồ sơ & Chuyển Thu ngân
+              </button>
+            `}
           </div>
         </div>
       </div>
@@ -2629,27 +2655,66 @@ function removeClsOrder(index) {
 }
 
 function openAddMedicineModal() {
+  const patient = MOCK_DATA.patients.find(p => p.id === (AppState.examination.selectedPatient || 1));
+  if (patient && patient.isLocked) {
+    showToast('Hồ sơ bệnh án đã hoàn tất và bị khóa. Không thể thêm thuốc!', 'error');
+    return;
+  }
+
   const meds = MOCK_DATA.medicines;
-  const medList = meds.map((m, i) => `${i + 1}: ${m.name} (${m.price.toLocaleString()} đ/${m.unit})`).join('\n');
-  const choice = prompt(`Chọn thuốc cần kê:\n${medList}\n(Nhập số 1-${meds.length}):`, '3');
+  const medList = meds
+    .map((m, i) => `${i + 1}. [${m.code}] ${m.name} (HC: ${m.active}) - ${m.price.toLocaleString()} đ/${m.unit} [${m.usage}]`)
+    .join('\n');
+
+  const choice = prompt(
+    `DANH MỤC THUỐC PHÒNG KHÁM:\n\n${medList}\n\nNhập số thứ tự thuốc cần kê (1-${meds.length}):`,
+    '1'
+  );
+
   const index = parseInt(choice) - 1;
   if (index >= 0 && index < meds.length) {
     const med = meds[index];
-    const qty = parseInt(prompt(`Nhập số lượng ${med.unit} cho ${med.name}:`, '20') || '20');
-    const dose = prompt(`Nhập hướng dẫn liều dùng:`, 'Uống 1 viên sau ăn, ngày 2 lần');
+    const qtyStr = prompt(`Nhập tổng số lượng ${med.unit} cho [${med.name}]:`, '14');
+    const qty = parseInt(qtyStr) || 14;
+
+    const morning = prompt(`Nhập liều buổi SÁNG (số viên):`, '1') || '1';
+    const noon = prompt(`Nhập liều buổi TRƯA (số viên, 0 nếu không uống):`, '0') || '0';
+    const afternoon = prompt(`Nhập liều buổi CHIỀU (số viên, 0 nếu không uống):`, '0') || '0';
+    const evening = prompt(`Nhập liều buổi TỐI (số viên):`, '1') || '1';
+
+    const usage = prompt(`Nhập cách dùng thuốc:`, med.usage || 'Uống sau bữa ăn no với nhiều nước');
+
+    const doseDetail = `Sáng: ${morning} • Trưa: ${noon} • Chiều: ${afternoon} • Tối: ${evening} (${med.unit})`;
+
     AppState.examination.prescriptions.push({
       id: med.id,
+      code: med.code,
       name: med.name,
-      dose: `${dose} (SL: ${qty} ${med.unit})`,
+      active: med.active,
+      unit: med.unit,
       qty: qty,
-      price: med.price * qty
+      unitPrice: med.price,
+      price: med.price * qty,
+      morning: parseFloat(morning) || 0,
+      noon: parseFloat(noon) || 0,
+      afternoon: parseFloat(afternoon) || 0,
+      evening: parseFloat(evening) || 0,
+      doseDetail: doseDetail,
+      dose: doseDetail,
+      usage: usage
     });
+
     render();
-    showToast(`Đã kê thêm thuốc: ${med.name} (x${qty})`, 'success');
+    showToast(`Đã kê thêm: ${med.name} (SL: ${qty} ${med.unit}) • Liều: ${doseDetail}`, 'success');
   }
 }
 
 function removeMedicine(index) {
+  const patient = MOCK_DATA.patients.find(p => p.id === (AppState.examination.selectedPatient || 1));
+  if (patient && patient.isLocked) {
+    showToast('Hồ sơ bệnh án đã bị khóa. Không thể xóa thuốc!', 'error');
+    return;
+  }
   const removed = AppState.examination.prescriptions.splice(index, 1);
   render();
   showToast(`Đã xóa thuốc: ${removed[0]?.name}`, 'warning');
@@ -2657,20 +2722,44 @@ function removeMedicine(index) {
 
 function completeExamination(patientId) {
   const p = MOCK_DATA.patients.find(pt => pt.id === patientId) || MOCK_DATA.patients[0];
-  p.status = 'examined';
+  
+  if (p.isLocked) {
+    showToast('Hồ sơ bệnh án này đã được hoàn tất và khóa trước đó!', 'info');
+    return;
+  }
 
-  // Cập nhật trạng thái lịch hẹn tương ứng thành completed (chờ thanh toán)
+  const diagnosisInput = document.getElementById('examDiagnosis')?.value || '';
+  if (!diagnosisInput || diagnosisInput.trim().length < 3) {
+    showToast('Vui lòng nhập Chẩn đoán xác định trước khi hoàn tất ca khám!', 'error');
+    return;
+  }
+
+  // 1. Khóa hồ sơ bệnh án
+  p.status = 'examined';
+  p.isLocked = true;
+  p.completedAt = new Date().toLocaleTimeString('vi-VN');
+
+  // 2. Cập nhật trạng thái lịch hẹn
   const apt = MOCK_DATA.appointments.find(a => a.patient === p.name);
   if (apt) {
     apt.status = 'completed';
   }
 
-  showToast(`🎉 Đã hoàn tất ca khám cho ${p.name}! Bảng kê chi phí đã được chuyển sang Quầy Thu ngân.`, 'success');
+  // 3. Tính toán tổng viện phí toàn diện (Khám 200k + CLS + Thuốc)
+  const totalCls = AppState.examination.clsOrders.reduce((sum, item) => sum + item.price, 0);
+  const totalMeds = AppState.examination.prescriptions.reduce((sum, item) => sum + item.price, 0);
+  const grandTotal = 200000 + totalCls + totalMeds;
+
+  render();
+  showToast(
+    `🎉 Bác sĩ đã hoàn tất ca khám và KHÓA HỒ SƠ cho ${p.name}! Tổng viện phí ${grandTotal.toLocaleString()} đ đã được chuyển sang Quầy Thu ngân.`,
+    'success'
+  );
   
-  // Tự động điều hướng sang quầy thu ngân để thanh toán ngay
+  // Tự động điều hướng sang quầy thu ngân sau 1.5s
   setTimeout(() => {
     openBillingForPatient(p.name, 'TS.BS Trần Thị Minh', apt?.code || `LH-20260914-${String(p.id).padStart(3, '0')}`);
-  }, 1200);
+  }, 1500);
 }
 
 // ─── Mobile sidebar toggle ───

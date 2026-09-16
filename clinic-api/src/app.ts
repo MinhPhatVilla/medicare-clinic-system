@@ -55,6 +55,7 @@ import examinationsRouter from './modules/examinations/examinations.routes';
 import billingRouter from './modules/billing/billing.routes';
 import receptionRouter from './modules/reception/reception.routes';
 import serviceOrdersRouter from './modules/service-orders/service-orders.routes';
+import prescriptionsRouter from './modules/prescriptions/prescriptions.routes';
 
 // Khởi tạo Express App
 const app = express();
@@ -116,6 +117,7 @@ app.use(`${API}/examinations`, examinationsRouter);
 app.use(`${API}/billing`, billingRouter);
 app.use(`${API}/reception`, receptionRouter);
 app.use(`${API}/service-orders`, serviceOrdersRouter);
+app.use(`${API}/prescriptions`, prescriptionsRouter);
 
 // ============================================================
 // SWAGGER DOCUMENTATION

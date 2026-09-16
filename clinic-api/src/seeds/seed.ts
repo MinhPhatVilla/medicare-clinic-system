@@ -21,6 +21,7 @@ import { Doctor, Specialty } from '../models/Doctor.entity';
 import { Patient, Gender, BloodType } from '../models/Patient.entity';
 import { DoctorSchedule, DayOfWeek } from '../models/DoctorSchedule.entity';
 import { MedicalService } from '../models/MedicalService.entity';
+import { Medicine } from '../models/Medicine.entity';
 import { ServiceType } from '../models/ServiceOrder.entity';
 
 const seedUsers = [
@@ -313,6 +314,108 @@ async function seed(): Promise<void> {
       const createdSvc = serviceRepo.create(svc);
       await serviceRepo.save(createdSvc);
       console.log(`🔬 Thêm dịch vụ CLS: ${svc.code} - ${svc.name} (${svc.price.toLocaleString('vi-VN')} đ)`);
+    }
+  }
+
+  // Danh mục Thuốc (Drug Catalog)
+  const medicineRepo = AppDataSource.getRepository(Medicine);
+  const seedMedicines = [
+    {
+      code: 'TH_OMEP_20',
+      name: 'Omeprazol 20mg',
+      activeIngredient: 'Omeprazole',
+      unit: 'Viên',
+      unitPrice: 2500,
+      dosageForm: 'Viên nang bao tan trong ruột',
+      packaging: 'Hộp 3 vỉ x 10 viên',
+      usageInstructions: 'Uống trước bữa ăn sáng 30 phút, nuốt nguyên viên',
+      manufacturer: 'Dược Hậu Giang',
+    },
+    {
+      code: 'TH_DOMP_10',
+      name: 'Domperidon 10mg',
+      activeIngredient: 'Domperidone',
+      unit: 'Viên',
+      unitPrice: 1500,
+      dosageForm: 'Viên nén',
+      packaging: 'Hộp 10 vỉ x 10 viên',
+      usageInstructions: 'Uống trước bữa ăn 15 - 30 phút khi có cảm giác buồn nôn, ợ hơi',
+      manufacturer: 'Dược phẩm Imexpharm',
+    },
+    {
+      code: 'TH_PARA_500',
+      name: 'Paracetamol 500mg',
+      activeIngredient: 'Paracetamol',
+      unit: 'Viên',
+      unitPrice: 1000,
+      dosageForm: 'Viên nén bao phim',
+      packaging: 'Hộp 10 vỉ x 10 viên',
+      usageInstructions: 'Uống sau ăn khi đau hoặc sốt trên 38.5°C, cách nhau 4-6 giờ',
+      manufacturer: 'Traphaco',
+    },
+    {
+      code: 'TH_AMOX_500',
+      name: 'Amoxicillin 500mg',
+      activeIngredient: 'Amoxicillin trihydrate',
+      unit: 'Viên',
+      unitPrice: 3000,
+      dosageForm: 'Viên nang',
+      packaging: 'Hộp 10 vỉ x 10 viên',
+      usageInstructions: 'Uống sau bữa ăn, tuân thủ đủ liệu trình 7-10 ngày',
+      manufacturer: 'Dược Hậu Giang',
+    },
+    {
+      code: 'TH_LOSA_50',
+      name: 'Losartan 50mg',
+      activeIngredient: 'Losartan potassium',
+      unit: 'Viên',
+      unitPrice: 4000,
+      dosageForm: 'Viên nén bao phim',
+      packaging: 'Hộp 3 vỉ x 10 viên',
+      usageInstructions: 'Uống 1 viên vào buổi sáng mỗi ngày, kiểm tra huyết áp định kỳ',
+      manufacturer: 'Stada / Stella',
+    },
+    {
+      code: 'TH_DICL_50',
+      name: 'Diclofenac 50mg',
+      activeIngredient: 'Diclofenac sodium',
+      unit: 'Viên',
+      unitPrice: 2000,
+      dosageForm: 'Viên nén bao tan ở ruột',
+      packaging: 'Hộp 5 vỉ x 10 viên',
+      usageInstructions: 'Uống sau khi ăn no kèm nhiều nước để giảm kích ứng dạ dày',
+      manufacturer: 'Dược phẩm Pymepharco',
+    },
+    {
+      code: 'TH_CETI_10',
+      name: 'Cetirizin 10mg',
+      activeIngredient: 'Cetirizine hydrochloride',
+      unit: 'Viên',
+      unitPrice: 1800,
+      dosageForm: 'Viên nén bao phim',
+      packaging: 'Hộp 10 vỉ x 10 viên',
+      usageInstructions: 'Uống 1 viên vào buổi tối trước khi đi ngủ khi có triệu chứng dị ứng',
+      manufacturer: 'Dược Hậu Giang',
+    },
+    {
+      code: 'TH_VITB_COMP',
+      name: 'Vitamin B Complex',
+      activeIngredient: 'Vitamin B1 + B6 + B12',
+      unit: 'Viên',
+      unitPrice: 1200,
+      dosageForm: 'Viên bao đường',
+      packaging: 'Lọ 100 viên',
+      usageInstructions: 'Uống 1 - 2 viên mỗi ngày sau bữa ăn',
+      manufacturer: 'Dược phẩm Nam Hà',
+    },
+  ];
+
+  for (const med of seedMedicines) {
+    const existing = await medicineRepo.findOne({ where: { code: med.code } });
+    if (!existing) {
+      const createdMed = medicineRepo.create(med);
+      await medicineRepo.save(createdMed);
+      console.log(`💊 Thêm thuốc: ${med.code} - ${med.name} (${med.unitPrice.toLocaleString('vi-VN')} đ/${med.unit})`);
     }
   }
 

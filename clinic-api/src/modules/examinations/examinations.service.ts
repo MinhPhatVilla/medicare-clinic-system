@@ -202,6 +202,13 @@ export class ExaminationsService {
         throw new ForbiddenError('Bạn không phải bác sĩ phụ trách ca khám này');
       }
 
+      // Không cho phép lưu nháp nếu hồ sơ đã bị khóa sau khi hoàn tất khám
+      if (examination.isLocked || examination.status === ExaminationStatus.COMPLETED) {
+        throw new BadRequestError(
+          'Hồ sơ khám bệnh này đã hoàn tất và bị khóa. Không thể sửa đổi bản nháp.',
+        );
+      }
+
       // Tính BMI nếu có thông tin cân nặng & chiều cao
       const targetWeight = dto.weight !== undefined ? dto.weight : examination.weight;
       const targetHeight = dto.height !== undefined ? dto.height : examination.height;
@@ -305,9 +312,18 @@ export class ExaminationsService {
       if (dto.followUpDate !== undefined) examination.followUpDate = new Date(dto.followUpDate);
       if (dto.followUpNotes !== undefined) examination.followUpNotes = dto.followUpNotes;
 
-      // Đánh dấu hoàn thành
+      // Kiểm tra hồ sơ đã khóa chưa
+      if (examination.isLocked || examination.status === ExaminationStatus.COMPLETED) {
+        throw new BadRequestError(
+          'Hồ sơ khám bệnh đã hoàn tất và bị khóa. Không thể sửa đổi tùy tiện.',
+        );
+      }
+
+      // Đánh dấu hoàn thành & khóa hồ sơ
       examination.status = ExaminationStatus.COMPLETED;
       examination.isDraft = false;
+      examination.isLocked = true;
+      examination.completedAt = new Date();
 
       const saved = await manager.getRepository(Examination).save(examination);
 

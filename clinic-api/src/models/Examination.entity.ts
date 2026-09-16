@@ -138,6 +138,12 @@ export class Examination {
   @Column({ name: 'follow_up_notes', type: 'text', nullable: true })
   followUpNotes: string;
 
+  @Column({ name: 'is_locked', default: false })
+  isLocked: boolean; // Khóa không cho sửa đổi tùy tiện sau khi đã hoàn tất khám
+
+  @Column({ name: 'completed_at', type: 'timestamp', nullable: true })
+  completedAt: Date; // Thời điểm hoàn tất ca khám chính thức
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

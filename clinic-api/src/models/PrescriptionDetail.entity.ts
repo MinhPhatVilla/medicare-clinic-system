@@ -47,30 +47,50 @@ export class PrescriptionDetail {
   @Column({ name: 'prescription_id' })
   prescriptionId: string;
 
+  @Index('idx_rxd_medicine_id')
+  @Column({ name: 'medicine_id', nullable: true })
+  medicineId: string; // FK liên kết tới danh mục thuốc (nếu có)
+
   @Column({ name: 'medicine_name', length: 200 })
-  medicineName: string; // VD: "Paracetamol 500mg"
+  medicineName: string; // VD: "Omeprazol 20mg", "Paracetamol 500mg"
 
   @Index('idx_rxd_medicine_code')
   @Column({ name: 'medicine_code', length: 30, nullable: true })
-  medicineCode: string; // Mã thuốc trong hệ thống (nếu có kho thuốc)
+  medicineCode: string; // Mã thuốc trong hệ thống
+
+  @Column({ name: 'active_ingredient', length: 255, nullable: true })
+  activeIngredient: string; // Hoạt chất chính (VD: "Omeprazole", "Paracetamol")
 
   @Column({ length: 50, nullable: true })
-  dosage: string; // Hàm lượng (VD: "500mg", "250mg/5ml")
+  dosage: string; // Hàm lượng (VD: "20mg", "500mg")
 
-  @Column({ name: 'route_of_administration', length: 50, nullable: true })
-  routeOfAdministration: string; // Đường dùng (VD: "Uống", "Tiêm bắp", "Bôi ngoài da")
+  @Column({ name: 'route_of_administration', length: 50, default: 'Uống' })
+  routeOfAdministration: string; // Đường dùng: "Uống", "Bôi ngoài da", "Nhỏ mắt", "Tiêm"
 
-  @Column({ length: 100 })
-  frequency: string; // Tần suất (VD: "3 lần/ngày", "Sáng 1 viên - Trưa 1 viên - Tối 1 viên")
+  // Liều dùng chi tiết từng buổi trong ngày
+  @Column({ name: 'morning_dose', type: 'decimal', precision: 5, scale: 2, default: 0 })
+  morningDose: number; // Sáng
 
-  @Column({ length: 50 })
-  duration: string; // Thời gian dùng (VD: "7 ngày", "2 tuần")
+  @Column({ name: 'noon_dose', type: 'decimal', precision: 5, scale: 2, default: 0 })
+  noonDose: number; // Trưa
+
+  @Column({ name: 'afternoon_dose', type: 'decimal', precision: 5, scale: 2, default: 0 })
+  afternoonDose: number; // Chiều
+
+  @Column({ name: 'evening_dose', type: 'decimal', precision: 5, scale: 2, default: 0 })
+  eveningDose: number; // Tối
+
+  @Column({ length: 100, nullable: true })
+  frequency: string; // Tần suất (VD: "Ngày 2 lần (Sáng 1 - Tối 1)")
+
+  @Column({ length: 50, default: '7 ngày' })
+  duration: string; // Thời gian dùng (VD: "7 ngày", "14 ngày")
 
   @Column({ type: 'int' })
-  quantity: number; // Số lượng cấp phát
+  quantity: number; // Tổng số lượng cấp phát
 
   @Column({ type: 'enum', enum: MedicineUnit, default: MedicineUnit.TABLET })
-  unit: MedicineUnit; // Đơn vị tính
+  unit: MedicineUnit; // Đơn vị tính: viên, gói, chai...
 
   @Column({ name: 'unit_price', type: 'decimal', precision: 10, scale: 2, default: 0 })
   unitPrice: number; // Đơn giá (VND/đơn vị)
@@ -78,8 +98,11 @@ export class PrescriptionDetail {
   @Column({ name: 'total_price', type: 'decimal', precision: 10, scale: 2, default: 0 })
   totalPrice: number; // Thành tiền = quantity × unit_price
 
+  @Column({ name: 'usage_instructions', type: 'text', nullable: true })
+  usageInstructions: string; // Cách dùng (VD: "Uống trước ăn 30 phút", "Uống sau ăn no")
+
   @Column({ type: 'text', nullable: true })
-  instruction: string; // Hướng dẫn cụ thể (VD: "Uống sau ăn 30 phút", "Không dùng khi lái xe")
+  instruction: string; // Hướng dẫn cụ thể thêm
 
   @Column({ type: 'text', nullable: true })
   notes: string; // Ghi chú thêm của bác sĩ
