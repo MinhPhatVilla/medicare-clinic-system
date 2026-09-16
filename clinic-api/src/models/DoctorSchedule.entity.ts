@@ -90,10 +90,18 @@ export class DoctorSchedule {
   maxPatients: number;
 
   /**
-   * booked_patients: Số bệnh nhân đã đặt thành công slot này
+   * booked_patients: Số bệnh nhân đã đặt thành công slot này (current_booked)
    */
   @Column({ name: 'booked_patients', default: 0 })
   bookedPatients: number;
+
+  get currentBooked(): number {
+    return this.bookedPatients;
+  }
+
+  set currentBooked(val: number) {
+    this.bookedPatients = val;
+  }
 
   @Index('idx_schedule_available')
   @Column({ name: 'is_available', default: true })

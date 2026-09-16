@@ -28,6 +28,7 @@ import {
 } from 'typeorm';
 import { Patient } from './Patient.entity';
 import { Doctor } from './Doctor.entity';
+import { DoctorSchedule } from './DoctorSchedule.entity';
 import { Examination } from './Examination.entity';
 import { Invoice } from './Invoice.entity';
 
@@ -74,6 +75,15 @@ export class Appointment {
 
   @Column({ name: 'doctor_id' })
   doctorId: string;
+
+  // FK → doctor_schedules (Khung giờ làm việc)
+  @ManyToOne(() => DoctorSchedule, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'schedule_id' })
+  schedule: DoctorSchedule;
+
+  @Index('idx_appt_schedule_id')
+  @Column({ name: 'schedule_id', nullable: true })
+  scheduleId: string;
 
   @Index('idx_appt_date')
   @Column({ name: 'appointment_date', type: 'date' })
