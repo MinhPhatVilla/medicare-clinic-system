@@ -9,7 +9,7 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { AppDataSource } from '../../config/database';
-import { Examination } from '../../models/Examination.entity';
+import { Examination, ExaminationStatus } from '../../models/Examination.entity';
 import { Appointment, AppointmentStatus } from '../../models/Appointment.entity';
 import { ApiResponse } from '../../utils/ApiResponse';
 import { authMiddleware } from '../../middlewares/auth.middleware';
@@ -73,13 +73,16 @@ router.post(
   async (req: Request, res: Response) => {
     const body = req.body;
 
-    // Kiểm tra appointment tồn tại và đang ở trạng thái IN_PROGRESS
+    // Kiểm tra appointment tồn tại và đang ở trạng thái CHECKED_IN hoặc IN_PROGRESS
     const appointment = await appointmentRepo.findOne({ where: { id: body.appointmentId } });
     if (!appointment) throw new NotFoundError('Lịch hẹn');
 
-    if (appointment.status !== AppointmentStatus.IN_PROGRESS) {
+    if (
+      appointment.status !== AppointmentStatus.IN_PROGRESS &&
+      appointment.status !== AppointmentStatus.CHECKED_IN
+    ) {
       throw new BadRequestError(
-        'Chỉ có thể nhập kết quả khi lịch hẹn đang ở trạng thái "Đang khám"',
+        'Chỉ có thể nhập kết quả khi lịch hẹn đang ở trạng thái "Đã check-in" hoặc "Đang khám"',
       );
     }
 
@@ -90,10 +93,24 @@ router.post(
       bmi = Math.round((body.weight / (heightM * heightM)) * 100) / 100;
     }
 
-    const examination = examRepo.create({
-      ...body,
-      bmi,
-    });
+    // Nếu bản ghi Examination đã được khởi tạo lúc lễ tân check-in, cập nhật lại
+    let examination = await examRepo.findOne({ where: { appointmentId: body.appointmentId } });
+    if (!examination) {
+      examination = examRepo.create({
+        ...body,
+        bmi,
+        patientId: appointment.patientId,
+        doctorId: appointment.doctorId,
+        status: ExaminationStatus.COMPLETED,
+      } as Partial<Examination>);
+    } else {
+      Object.assign(examination, body, {
+        bmi,
+        patientId: appointment.patientId,
+        doctorId: appointment.doctorId,
+        status: ExaminationStatus.COMPLETED,
+      });
+    }
 
     const saved = await examRepo.save(examination);
 

@@ -24,12 +24,22 @@ import {
   UpdateDateColumn,
   OneToOne,
   OneToMany,
+  ManyToOne,
   JoinColumn,
   Index,
 } from 'typeorm';
 import { Appointment } from './Appointment.entity';
+import { Patient } from './Patient.entity';
+import { Doctor } from './Doctor.entity';
 import { ServiceOrder } from './ServiceOrder.entity';
 import { Prescription } from './Prescription.entity';
+
+export enum ExaminationStatus {
+  WAITING = 'WAITING', // Chờ khám (vừa check-in xong)
+  IN_PROGRESS = 'IN_PROGRESS', // Đang khám
+  COMPLETED = 'COMPLETED', // Hoàn thành
+  CANCELLED = 'CANCELLED', // Hủy
+}
 
 @Entity('examinations')
 export class Examination {
@@ -44,6 +54,28 @@ export class Examination {
   @Index('idx_exam_appointment_id', { unique: true })
   @Column({ name: 'appointment_id' })
   appointmentId: string;
+
+  // FK → patients
+  @Index('idx_exam_patient_id')
+  @Column({ name: 'patient_id', nullable: true })
+  patientId: string;
+
+  @ManyToOne(() => Patient, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'patient_id' })
+  patient: Patient;
+
+  // FK → doctors
+  @Index('idx_exam_doctor_id')
+  @Column({ name: 'doctor_id', nullable: true })
+  doctorId: string;
+
+  @ManyToOne(() => Doctor, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'doctor_id' })
+  doctor: Doctor;
+
+  @Index('idx_exam_status')
+  @Column({ type: 'enum', enum: ExaminationStatus, default: ExaminationStatus.WAITING })
+  status: ExaminationStatus;
 
   // ---- Sinh hiệu (Vital Signs) ----
   @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
@@ -84,8 +116,8 @@ export class Examination {
   @Column({ name: 'icd10_description', type: 'text', nullable: true })
   icd10Description: string; // Mô tả ICD-10 bằng tiếng Việt
 
-  @Column({ name: 'diagnosis', type: 'text' })
-  diagnosis: string; // Chẩn đoán (text mô tả)
+  @Column({ name: 'diagnosis', type: 'text', nullable: true })
+  diagnosis: string; // Chẩn đoán (text mô tả, null khi đang ở trạng thái WAITING)
 
   @Column({ name: 'clinical_notes', type: 'text', nullable: true })
   clinicalNotes: string; // Ghi chú lâm sàng
