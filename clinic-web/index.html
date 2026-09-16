@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MediCare - Hệ thống đặt lịch khám bệnh trực tuyến tại phòng khám. Đặt hẹn nhanh chóng, quản lý hồ sơ sức khỏe hiệu quả.">
+    <meta name="keywords" content="đặt lịch khám, phòng khám, khám bệnh, hẹn bác sĩ, y tế">
+    <meta name="author" content="Nhóm 41 - PTIT">
+    <title>MediCare — Hệ Thống Đặt Lịch Khám Phòng Khám</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏥</text></svg>">
+    
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- App Root -->
+    <div id="app">
+        <!-- Loading State -->
+        <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 1rem;">
+            <div class="spinner" style="width: 40px; height: 40px;"></div>
+            <p style="color: var(--text-muted); font-size: 0.875rem;">Đang tải hệ thống...</p>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Application Script -->
+    <script src="js/app.js"></script>
+</body>
+</html>

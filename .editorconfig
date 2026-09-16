@@ -1,0 +1,49 @@
+# EditorConfig is awesome: https://EditorConfig.org
+
+# Top-most EditorConfig file
+root = true
+
+# Default settings for all files
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 2
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# JavaScript / TypeScript / React / Next.js
+[*.{js,jsx,ts,tsx,mjs,cjs}]
+indent_size = 2
+max_line_length = 100
+
+# JSON / JSONC
+[*.{json,jsonc}]
+indent_size = 2
+
+# Stylesheets (CSS, SCSS, LESS)
+[*.{css,scss,sass,less}]
+indent_size = 2
+
+# HTML / XML / SVG
+[*.{html,xhtml,xml,svg}]
+indent_size = 2
+
+# YAML / Docker
+[*.{yml,yaml,dockerfile}]
+indent_size = 2
+
+# Markdown
+[*.{md,markdown}]
+trim_trailing_whitespace = false
+max_line_length = off
+
+# Dart / Flutter
+[*.dart]
+indent_size = 2
+max_line_length = 120
+
+# Shell / Bash / PowerShell
+[*.{sh,bash,zsh,ps1}]
+indent_size = 2
+end_of_line = lf

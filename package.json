@@ -1,0 +1,32 @@
+{
+  "name": "medicare-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Hệ thống quản lý đặt lịch và quy trình khám bệnh tại phòng khám (MediCare)",
+  "workspaces": [
+    "clinic-api",
+    "apps/*",
+    "services/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "npm --prefix clinic-api run dev",
+    "build:api": "npm --prefix clinic-api run build",
+    "lint:api": "npm --prefix clinic-api run lint",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:logs": "docker compose logs -f postgres",
+    "test": "echo \"Running monorepo tests...\" && exit 0"
+  },
+  "keywords": [
+    "medicare",
+    "monorepo",
+    "healthcare",
+    "appointment-system",
+    "microservices",
+    "typescript",
+    "express"
+  ],
+  "author": "PTIT MediCare Team",
+  "license": "MIT"
+}

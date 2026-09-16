@@ -1,0 +1,42 @@
+name: CI - MediCare Monorepo
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+
+jobs:
+  lint-and-build:
+    name: Lint & Build Backend (clinic-api)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+          cache-dependency-path: clinic-api/package-lock.json
+
+      - name: Install Dependencies
+        run: |
+          cd clinic-api
+          npm ci
+
+      - name: Run Linter
+        run: |
+          cd clinic-api
+          npm run lint
+
+      - name: Build TypeScript Project
+        run: |
+          cd clinic-api
+          npm run build
