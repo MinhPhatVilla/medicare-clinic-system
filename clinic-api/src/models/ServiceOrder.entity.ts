@@ -38,7 +38,8 @@ export enum ServiceType {
 }
 
 export enum ServiceOrderStatus {
-  ORDERED = 'ORDERED', // Đã chỉ định, chờ thực hiện
+  ORDERED = 'ORDERED', // Đã chỉ định, chờ thu tiền / thực hiện
+  PAID = 'PAID', // Đã thu tiền (theo yêu cầu)
   IN_PROGRESS = 'IN_PROGRESS', // Đang làm xét nghiệm
   COMPLETED = 'COMPLETED', // Có kết quả
   CANCELLED = 'CANCELLED', // Hủy chỉ định
@@ -49,6 +50,10 @@ export class ServiceOrder {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Index('idx_so_order_number', { unique: true })
+  @Column({ name: 'order_number', length: 40, nullable: true })
+  orderNumber: string; // VD: "CLS-20260916-A1B2"
+
   // FK → examinations
   @ManyToOne(() => Examination, (exam) => exam.serviceOrders, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'examination_id' })
@@ -57,6 +62,15 @@ export class ServiceOrder {
   @Index('idx_so_examination_id')
   @Column({ name: 'examination_id' })
   examinationId: string;
+
+  // FK → medical_services (Tùy chọn nếu chọn từ Service Catalog)
+  @ManyToOne('MedicalService', 'orders', { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'service_id' })
+  service: any;
+
+  @Index('idx_so_service_id')
+  @Column({ name: 'service_id', nullable: true })
+  serviceId: string;
 
   @Column({ name: 'service_name', length: 200 })
   serviceName: string; // VD: "Xét nghiệm máu tổng quát CBC"

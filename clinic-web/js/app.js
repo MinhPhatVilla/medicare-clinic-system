@@ -35,12 +35,15 @@ const MOCK_DATA = {
     { id: 5, name: 'Hoàng Đức Phúc', dob: '2000-09-30', gender: 'Nam', phone: '0977888999', stt: 5, time: '10:00', reason: 'Kiểm tra sức khỏe tổng quát', status: 'waiting', allergy: 'Sulfa', history: 'Không' },
   ],
   services: [
-    { id: 1, name: 'Xét nghiệm máu tổng quát (CBC)', price: 150000, type: 'Xét nghiệm' },
-    { id: 2, name: 'Sinh hóa máu (Glucose, Cholesterol)', price: 200000, type: 'Xét nghiệm' },
-    { id: 3, name: 'Siêu âm bụng tổng quát', price: 250000, type: 'CĐHA' },
-    { id: 4, name: 'X-quang ngực thẳng', price: 180000, type: 'CĐHA' },
-    { id: 5, name: 'Điện tâm đồ (ECG)', price: 120000, type: 'Thăm dò' },
-    { id: 6, name: 'Nội soi dạ dày', price: 800000, type: 'Nội soi' },
+    { id: 1, code: 'XN_CBC', name: 'Tổng phân tích tế bào máu ngoại vi (CBC)', price: 150000, type: 'Xét nghiệm', dept: 'P.103 Xét nghiệm' },
+    { id: 2, code: 'XN_SHM', name: 'Sinh hóa máu cơ bản (Glucose, Men gan, Thận)', price: 220000, type: 'Xét nghiệm', dept: 'P.103 Xét nghiệm' },
+    { id: 3, code: 'SA_OB', name: 'Siêu âm ổ bụng tổng quát màu', price: 250000, type: 'Siêu âm', dept: 'P.201 Siêu âm' },
+    { id: 4, code: 'SA_TIM', name: 'Siêu âm tim Doppler màu thành ngực', price: 450000, type: 'Siêu âm', dept: 'P.202 Siêu âm Tim' },
+    { id: 5, code: 'XQ_NGUC', name: 'Chụp X-quang ngực thẳng kỹ thuật số (DR)', price: 180000, type: 'X-Quang', dept: 'P.105 X-quang' },
+    { id: 6, code: 'XQ_CS', name: 'Chụp X-quang cột sống thắt lưng thẳng/nghiêng', price: 240000, type: 'X-Quang', dept: 'P.105 X-quang' },
+    { id: 7, code: 'ECG_12', name: 'Điện tim 12 chuyển đạo (ECG)', price: 120000, type: 'Điện tim', dept: 'P.104 Thăm dò chức năng' },
+    { id: 8, code: 'NS_DD', name: 'Nội soi dạ dày - tá tràng gây mê', price: 1200000, type: 'Nội soi', dept: 'TT Nội soi tiêu hóa' },
+    { id: 9, code: 'NS_DT', name: 'Nội soi đại trực tràng toàn bộ gây mê', price: 1800000, type: 'Nội soi', dept: 'TT Nội soi tiêu hóa' },
   ],
   medicines: [
     { id: 1, name: 'Omeprazol 20mg', unit: 'Viên', price: 2500, group: 'Tiêu hóa' },
@@ -1150,10 +1153,10 @@ function renderDoctorExamination() {
   const patientId = AppState.examination.selectedPatient || MOCK_DATA.patients[0]?.id;
   const patient = MOCK_DATA.patients.find(p => p.id === patientId) || MOCK_DATA.patients[0];
   
-  if (!AppState.examination.clsOrders) {
+  if (!AppState.examination.clsOrders || AppState.examination.clsOrders.length === 0) {
     AppState.examination.clsOrders = [
-      { id: 1, name: 'Xét nghiệm máu tổng quát (CBC)', price: 150000, type: 'Xét nghiệm' },
-      { id: 3, name: 'Siêu âm bụng tổng quát', price: 250000, type: 'CĐHA' }
+      { id: 1, code: 'XN_CBC', name: 'Tổng phân tích tế bào máu ngoại vi (CBC)', price: 150000, type: 'Xét nghiệm', status: 'ORDERED', result: null },
+      { id: 3, code: 'SA_OB', name: 'Siêu âm ổ bụng tổng quát màu', price: 250000, type: 'Siêu âm', status: 'PAID', result: 'Gan, mật, tụy, lách, 2 thận hình thái bình thường. Không thấy sỏi hoặc dịch tự do.' }
     ];
   }
   if (!AppState.examination.prescriptions) {
@@ -1316,22 +1319,58 @@ function renderDoctorExamination() {
         <!-- CLS Orders -->
         <div class="card animate-in animate-in-delay-1" style="margin-bottom: 1.5rem;">
           <div class="flex items-center justify-between" style="margin-bottom: 1rem;">
-            <h4>🔬 Chỉ định Cận lâm sàng (CLS)</h4>
-            <button class="btn btn-outline btn-sm" onclick="openAddClsModal()">+ Thêm chỉ định</button>
+            <div>
+              <h4 style="margin: 0;">🔬 Chỉ định Cận lâm sàng (CLS)</h4>
+              <div class="text-xs text-muted" style="margin-top: 0.2rem;">Xét nghiệm • Siêu âm • X-Quang • Nội soi</div>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="openAddClsModal()">+ Thêm chỉ định CLS</button>
           </div>
           <div class="prescription-list">
-            ${AppState.examination.clsOrders.map((cls, index) => `
-              <div class="prescription-item">
-                <div>
-                  <div class="med-name">${cls.name}</div>
-                  <div class="med-detail">${cls.type} • <strong>${cls.price.toLocaleString()} VNĐ</strong></div>
+            ${AppState.examination.clsOrders.map((cls, index) => {
+              const statusBadge = cls.status === 'COMPLETED' 
+                ? '<span class="badge badge-success" style="font-size:0.75rem;">✅ COMPLETED (Đã có kết quả)</span>'
+                : cls.status === 'PAID'
+                ? '<span class="badge badge-info" style="font-size:0.75rem;">💳 PAID (Đã thu tiền)</span>'
+                : '<span class="badge badge-warning" style="font-size:0.75rem;">⏳ ORDERED (Chờ thu tiền)</span>';
+
+              return `
+              <div class="prescription-item" style="flex-direction: column; align-items: stretch; gap: 0.5rem;">
+                <div class="flex justify-between items-center">
+                  <div>
+                    <strong style="color: var(--text-primary); font-size: 0.95rem;">${cls.name}</strong>
+                    <div class="text-xs text-muted">${cls.type} • Mã: ${cls.code || 'CLS'} • <strong>${cls.price.toLocaleString()} VNĐ</strong></div>
+                  </div>
+                  <div class="flex items-center gap-sm">
+                    ${statusBadge}
+                    <span class="med-remove" title="Hủy chỉ định" onclick="removeClsOrder(${index})">✕</span>
+                  </div>
                 </div>
-                <span class="med-remove" onclick="removeClsOrder(${index})">✕</span>
+                ${cls.result ? `
+                  <div style="background: rgba(34, 197, 94, 0.08); border-left: 3px solid #22c55e; padding: 0.4rem 0.6rem; border-radius: 4px; font-size: 0.82rem;">
+                    <strong>Kết quả:</strong> ${cls.result}
+                  </div>
+                ` : ''}
+                <div class="flex justify-end gap-sm" style="margin-top: 0.2rem;">
+                  ${cls.status === 'ORDERED' ? `
+                    <button class="btn btn-secondary btn-sm" style="font-size:0.75rem; padding: 0.2rem 0.5rem;" onclick="payClsOrder(${index})">
+                      💳 Thu tiền tại quầy (PAID)
+                    </button>
+                  ` : cls.status === 'PAID' ? `
+                    <button class="btn btn-primary btn-sm" style="font-size:0.75rem; padding: 0.2rem 0.5rem;" onclick="enterClsResult(${index})">
+                      📝 Nhập kết quả CLS (COMPLETED)
+                    </button>
+                  ` : `
+                    <button class="btn btn-outline btn-sm" style="font-size:0.75rem; padding: 0.2rem 0.5rem;" onclick="enterClsResult(${index})">
+                      ✏️ Sửa kết quả
+                    </button>
+                  `}
+                </div>
               </div>
-            `).join('')}
+            `;
+            }).join('')}
           </div>
           <div class="flex justify-between mt-md" style="padding-top: 0.75rem; border-top: 1px solid var(--border-color);">
-            <span class="text-sm text-muted">Tổng chi phí CLS:</span>
+            <span class="text-sm text-muted">Tổng chi phí CLS (Tự động đồng bộ viện phí):</span>
             <span class="text-sm" style="font-weight: 700; color: var(--primary-300);">${totalCls.toLocaleString()} VNĐ</span>
           </div>
         </div>
@@ -2419,26 +2458,70 @@ function calculateBMI() {
 
 function openAddClsModal() {
   const availableServices = MOCK_DATA.services;
-  const serviceNames = availableServices.map((s, i) => `${i + 1}: ${s.name} (${s.price.toLocaleString()} đ)`).join('\n');
-  const choice = prompt(`Chọn dịch vụ Cận lâm sàng cần chỉ định:\n${serviceNames}\n(Nhập số 1-${availableServices.length}):`, '2');
+  const serviceListText = availableServices
+    .map((s, i) => `${i + 1}. [${s.code}] ${s.name} (${s.type}) - ${s.price.toLocaleString()} VNĐ [${s.dept}]`)
+    .join('\n');
+
+  const choice = prompt(
+    `DANH MỤC DỊCH VỤ KỸ THUẬT & BẢNG GIÁ NIÊM YẾT:\n\n${serviceListText}\n\nNhập số thứ tự dịch vụ muốn chỉ định (1-${availableServices.length}):`,
+    '1'
+  );
+
   const index = parseInt(choice) - 1;
   if (index >= 0 && index < availableServices.length) {
     const selectedSvc = availableServices[index];
     AppState.examination.clsOrders.push({
       id: selectedSvc.id,
+      code: selectedSvc.code,
       name: selectedSvc.name,
       price: selectedSvc.price,
-      type: selectedSvc.type
+      type: selectedSvc.type,
+      status: 'ORDERED', // Mặc định là ORDERED (Đã chỉ định)
+      result: null
     });
     render();
-    showToast(`Đã thêm chỉ định: ${selectedSvc.name}`, 'success');
+    showToast(`Đã chỉ định: ${selectedSvc.name} (150,000 đ) • Đã đồng bộ vào viện phí tạm tính!`, 'success');
+  }
+}
+
+function payClsOrder(index) {
+  const cls = AppState.examination.clsOrders[index];
+  if (cls) {
+    cls.status = 'PAID';
+    render();
+    showToast(`💳 Đã xác nhận thu tiền cho dịch vụ: ${cls.name}! Trạng thái chuyển sang PAID.`, 'success');
+  }
+}
+
+function enterClsResult(index) {
+  const cls = AppState.examination.clsOrders[index];
+  if (cls) {
+    const defaultRes = cls.type === 'Xét nghiệm' 
+      ? 'Hồng cầu: 4.8 M/μL, Bạch cầu: 6.8 K/μL, Tiểu cầu: 240 K/μL (Bình thường)'
+      : cls.type === 'Siêu âm'
+      ? 'Cấu trúc giải phẫu bình thường, không ghi nhận tổn thương khu trú.'
+      : 'Hình ảnh tim phổi và xương khớp trong giới hạn bình thường.';
+
+    const res = prompt(`Nhập kết quả Cận lâm sàng cho [${cls.name}]:`, cls.result || defaultRes);
+    if (res !== null) {
+      cls.result = res;
+      cls.status = 'COMPLETED';
+      render();
+      showToast(`✅ Đã cập nhật kết quả cho [${cls.name}]! Trạng thái chuyển sang COMPLETED.`, 'success');
+    }
   }
 }
 
 function removeClsOrder(index) {
+  const cls = AppState.examination.clsOrders[index];
+  if (cls && cls.status === 'PAID') {
+    if (!confirm('Dịch vụ này đã thu tiền. Bạn có chắc chắn muốn hủy và hoàn tiền tạm tính?')) {
+      return;
+    }
+  }
   const removed = AppState.examination.clsOrders.splice(index, 1);
   render();
-  showToast(`Đã xóa chỉ định: ${removed[0]?.name}`, 'warning');
+  showToast(`Đã xóa chỉ định: ${removed[0]?.name}. Đã cập nhật lại viện phí tạm tính.`, 'warning');
 }
 
 function openAddMedicineModal() {

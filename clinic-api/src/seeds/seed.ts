@@ -20,6 +20,8 @@ import { User, UserRole } from '../models/User.entity';
 import { Doctor, Specialty } from '../models/Doctor.entity';
 import { Patient, Gender, BloodType } from '../models/Patient.entity';
 import { DoctorSchedule, DayOfWeek } from '../models/DoctorSchedule.entity';
+import { MedicalService } from '../models/MedicalService.entity';
+import { ServiceType } from '../models/ServiceOrder.entity';
 
 const seedUsers = [
   {
@@ -189,6 +191,128 @@ async function seed(): Promise<void> {
         });
         await scheduleRepo.save(schedule);
       }
+    }
+  }
+
+  // Danh mục Dịch vụ Cận Lâm Sàng (Service Catalog) niêm yết
+  const serviceRepo = AppDataSource.getRepository(MedicalService);
+  const seedServices = [
+    {
+      code: 'XN_CBC',
+      name: 'Tổng phân tích tế bào máu ngoại vi (CBC)',
+      serviceType: ServiceType.LAB_TEST,
+      price: 150000,
+      unit: 'Lần',
+      department: 'Phòng Xét nghiệm Huyết học',
+      description: 'Đánh giá số lượng hồng cầu, bạch cầu, tiểu cầu. Phát hiện thiếu máu, nhiễm trùng.',
+    },
+    {
+      code: 'XN_SHM',
+      name: 'Sinh hóa máu cơ bản (Glucose, Ure, Creatinin, AST, ALT)',
+      serviceType: ServiceType.LAB_TEST,
+      price: 220000,
+      unit: 'Lần',
+      department: 'Phòng Xét nghiệm Sinh hóa',
+      description: 'Đánh giá chức năng gan, thận, đường huyết. Cần nhịn ăn 8h trước khi lấy máu.',
+    },
+    {
+      code: 'XN_LIPID',
+      name: 'Bộ mỡ máu (Cholesterol, Triglycerid, HDL-C, LDL-C)',
+      serviceType: ServiceType.LAB_TEST,
+      price: 180000,
+      unit: 'Lần',
+      department: 'Phòng Xét nghiệm Sinh hóa',
+      description: 'Tầm soát rối loạn mỡ máu và nguy cơ tim mạch xơ vữa.',
+    },
+    {
+      code: 'XN_URI',
+      name: 'Tổng phân tích nước tiểu 10 thông số',
+      serviceType: ServiceType.LAB_TEST,
+      price: 80000,
+      unit: 'Lần',
+      department: 'Phòng Xét nghiệm Vi sinh',
+      description: 'Kiểm tra đường tiết niệu, đạm niệu, hồng cầu niệu.',
+    },
+    {
+      code: 'SA_OB',
+      name: 'Siêu âm ổ bụng tổng quát màu',
+      serviceType: ServiceType.IMAGING,
+      price: 250000,
+      unit: 'Lần',
+      department: 'Phòng Siêu âm 201',
+      description: 'Khảo sát gan, mật, tụy, lách, thận, bàng quang. Cần nhịn tiểu để bàng quang căng.',
+    },
+    {
+      code: 'SA_TIM',
+      name: 'Siêu âm tim Doppler màu qua thành ngực',
+      serviceType: ServiceType.IMAGING,
+      price: 450000,
+      unit: 'Lần',
+      department: 'Phòng Siêu âm Tim 202',
+      description: 'Đánh giá hình thái, chức năng co bóp cơ tim và các van tim.',
+    },
+    {
+      code: 'SA_GIAP',
+      name: 'Siêu âm tuyến giáp Doppler màu',
+      serviceType: ServiceType.IMAGING,
+      price: 200000,
+      unit: 'Lần',
+      department: 'Phòng Siêu âm 201',
+      description: 'Phát hiện nhân tuyến giáp, bướu giáp, viêm tuyến giáp.',
+    },
+    {
+      code: 'XQ_NGUC',
+      name: 'Chụp X-quang ngực thẳng kỹ thuật số (DR)',
+      serviceType: ServiceType.IMAGING,
+      price: 180000,
+      unit: 'Lần',
+      department: 'Khoa Chẩn đoán Hình ảnh - Phòng X-quang 105',
+      description: 'Tầm soát bệnh lý tim phổi, tràn dịch màng phổi, viêm phổi.',
+    },
+    {
+      code: 'XQ_CS',
+      name: 'Chụp X-quang cột sống thắt lưng 2 tư thế (thẳng/nghiêng)',
+      serviceType: ServiceType.IMAGING,
+      price: 240000,
+      unit: 'Lần',
+      department: 'Khoa Chẩn đoán Hình ảnh - Phòng X-quang 105',
+      description: 'Đánh giá thoái hóa cột sống, gai xương, trượt đốt sống.',
+    },
+    {
+      code: 'ECG_12',
+      name: 'Điện tim 12 chuyển đạo (ECG)',
+      serviceType: ServiceType.ECG,
+      price: 120000,
+      unit: 'Lần',
+      department: 'Phòng Thăm dò chức năng 104',
+      description: 'Ghi nhận nhịp tim, thiếu máu cơ tim, rối loạn dẫn truyền.',
+    },
+    {
+      code: 'NS_DD',
+      name: 'Nội soi thực quản - dạ dày - tá tràng có gây mê',
+      serviceType: ServiceType.ENDOSCOPY,
+      price: 1200000,
+      unit: 'Lần',
+      department: 'Trung tâm Nội soi Tiêu hóa',
+      description: 'Phát hiện viêm loét, polyp, vi khuẩn HP, tầm soát ung thư dạ dày.',
+    },
+    {
+      code: 'NS_DT',
+      name: 'Nội soi đại trực tràng toàn bộ có gây mê',
+      serviceType: ServiceType.ENDOSCOPY,
+      price: 1800000,
+      unit: 'Lần',
+      department: 'Trung tâm Nội soi Tiêu hóa',
+      description: 'Tầm soát polyp, viêm loét đại tràng, xuất huyết tiêu hóa dưới.',
+    },
+  ];
+
+  for (const svc of seedServices) {
+    const existing = await serviceRepo.findOne({ where: { code: svc.code } });
+    if (!existing) {
+      const createdSvc = serviceRepo.create(svc);
+      await serviceRepo.save(createdSvc);
+      console.log(`🔬 Thêm dịch vụ CLS: ${svc.code} - ${svc.name} (${svc.price.toLocaleString('vi-VN')} đ)`);
     }
   }
 
