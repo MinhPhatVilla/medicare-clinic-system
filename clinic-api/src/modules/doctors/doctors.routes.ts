@@ -27,9 +27,9 @@ const updateDoctorSchema = z.object({
   qualification: z.string().optional(),
   bio: z.string().optional(),
   consultationFee: z.number().positive().optional(),
-  workingDays: z.array(z.string()).optional(),
-  workingHoursStart: z.string().optional(),
-  workingHoursEnd: z.string().optional(),
+  experienceYears: z.number().int().nonnegative().optional(),
+  license: z.string().optional(),
+  avatarUrl: z.string().optional(),
   isAvailable: z.boolean().optional(),
 });
 
@@ -58,7 +58,7 @@ router.get('/', async (req: Request, res: Response) => {
 router.get('/:id', async (req: Request, res: Response) => {
   const doctor = await doctorRepo.findOne({
     where: { id: req.params.id },
-    relations: ['user'],
+    relations: ['user', 'schedules'],
   });
 
   if (!doctor) throw new NotFoundError('Bác sĩ');
@@ -67,19 +67,14 @@ router.get('/:id', async (req: Request, res: Response) => {
 
 // GET /doctors/:id/schedule - Lịch làm việc của bác sĩ (public)
 router.get('/:id/schedule', async (req: Request, res: Response) => {
-  const doctor = await doctorRepo.findOne({ where: { id: req.params.id } });
+  const doctor = await doctorRepo.findOne({
+    where: { id: req.params.id },
+    relations: ['schedules'],
+  });
   if (!doctor) throw new NotFoundError('Bác sĩ');
 
-  // Trả về working schedule
-  ApiResponse.success(
-    res,
-    {
-      workingDays: doctor.workingDays,
-      workingHoursStart: doctor.workingHoursStart,
-      workingHoursEnd: doctor.workingHoursEnd,
-    },
-    'Thành công',
-  );
+  // Trả về danh sách lịch làm việc từ bảng DoctorSchedule
+  ApiResponse.success(res, doctor.schedules || [], 'Lấy lịch làm việc bác sĩ thành công');
 });
 
 // PATCH /doctors/:id - Cập nhật thông tin bác sĩ (Admin, chính bác sĩ đó)

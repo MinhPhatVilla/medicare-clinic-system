@@ -1,13 +1,19 @@
 /**
  * @file src/models/Examination.entity.ts
- * @description Entity Examination — Kết quả khám bệnh (EMR - Electronic Medical Record)
+ * @description Entity Examination — Phiếu khám bệnh / Hồ sơ bệnh án (Medical Record)
  *
- * Lưu trữ đầy đủ thông tin khám bệnh của bác sĩ:
- * - Chỉ số sinh hiệu (vital signs)
- * - Chẩn đoán ICD-10
- * - Đơn thuốc (JSON array)
- * - Chỉ định xét nghiệm
- * - Ghi chú bác sĩ
+ * Quan hệ:
+ * - Examination (1) ←→ (1) Appointment
+ * - Examination (1) ←→ (n) ServiceOrder  ← Chỉ định CLS (xét nghiệm, siêu âm, X-quang)
+ * - Examination (1) ←→ (1) Prescription  ← Đơn thuốc (tách bảng riêng)
+ *
+ * Thay đổi so với phiên bản cũ:
+ * - Xóa: prescription JSON array → thay bằng bảng Prescription + PrescriptionDetail
+ * - Xóa: labTests JSON array     → thay bằng bảng ServiceOrder
+ * - Thêm: các thông tin lâm sàng chi tiết hơn
+ *
+ * Index:
+ * - idx_exam_appointment_id: FK lookup 1:1
  */
 
 import {
@@ -17,25 +23,13 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToOne,
+  OneToMany,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { Appointment } from './Appointment.entity';
-
-// Interface cho 1 thuốc trong đơn
-export interface PrescriptionItem {
-  name: string; // Tên thuốc
-  dosage: string; // Liều dùng (VD: "500mg")
-  frequency: string; // Tần suất (VD: "3 lần/ngày")
-  duration: string; // Thời gian (VD: "7 ngày")
-  instruction: string; // Hướng dẫn (VD: "Uống sau ăn")
-}
-
-// Interface cho xét nghiệm chỉ định
-export interface LabTest {
-  testName: string; // Tên xét nghiệm
-  testCode: string; // Mã xét nghiệm
-  notes: string; // Ghi chú
-}
+import { ServiceOrder } from './ServiceOrder.entity';
+import { Prescription } from './Prescription.entity';
 
 @Entity('examinations')
 export class Examination {
@@ -47,6 +41,7 @@ export class Examination {
   @JoinColumn({ name: 'appointment_id' })
   appointment: Appointment;
 
+  @Index('idx_exam_appointment_id', { unique: true })
   @Column({ name: 'appointment_id' })
   appointmentId: string;
 
@@ -61,7 +56,7 @@ export class Examination {
   bmi: number; // Tự tính từ weight/height
 
   @Column({ name: 'blood_pressure', length: 20, nullable: true })
-  bloodPressure: string; // "120/80"
+  bloodPressure: string; // "120/80 mmHg"
 
   @Column({ name: 'heart_rate', nullable: true })
   heartRate: number; // bpm
@@ -72,9 +67,22 @@ export class Examination {
   @Column({ name: 'spo2', nullable: true })
   spo2: number; // % SpO2
 
+  @Column({ name: 'respiratory_rate', nullable: true })
+  respiratoryRate: number; // nhịp thở/phút
+
+  // ---- Triệu chứng & Tiền sử ----
+  @Column({ name: 'chief_complaint_detail', type: 'text', nullable: true })
+  chiefComplaintDetail: string; // Triệu chứng chi tiết (ghi nhận tại buổi khám)
+
+  @Column({ name: 'medical_history', type: 'text', nullable: true })
+  medicalHistory: string; // Tiền sử bệnh tật liên quan
+
   // ---- Chẩn đoán ----
   @Column({ name: 'icd10_code', length: 20, nullable: true })
   icd10Code: string; // Mã ICD-10, VD: "J06.9"
+
+  @Column({ name: 'icd10_description', type: 'text', nullable: true })
+  icd10Description: string; // Mô tả ICD-10 bằng tiếng Việt
 
   @Column({ name: 'diagnosis', type: 'text' })
   diagnosis: string; // Chẩn đoán (text mô tả)
@@ -82,18 +90,10 @@ export class Examination {
   @Column({ name: 'clinical_notes', type: 'text', nullable: true })
   clinicalNotes: string; // Ghi chú lâm sàng
 
-  // ---- Đơn thuốc ----
-  /**
-   * prescription: Lưu dưới dạng JSON array của PrescriptionItem
-   * Không tạo bảng riêng để đơn giản hóa (phù hợp với quy mô phòng khám nhỏ)
-   */
-  @Column({ type: 'json', nullable: true })
-  prescription: PrescriptionItem[];
+  @Column({ name: 'treatment_plan', type: 'text', nullable: true })
+  treatmentPlan: string; // Phác đồ điều trị
 
-  // ---- Xét nghiệm ----
-  @Column({ name: 'lab_tests', type: 'json', nullable: true })
-  labTests: LabTest[];
-
+  // ---- Tái khám ----
   @Column({ name: 'follow_up_date', type: 'date', nullable: true })
   followUpDate: Date; // Ngày tái khám
 
@@ -105,4 +105,19 @@ export class Examination {
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
+
+  // Relations
+  /**
+   * Các chỉ định cận lâm sàng (xét nghiệm, siêu âm, X-quang)
+   * Thay thế cho labTests JSON array cũ.
+   */
+  @OneToMany(() => ServiceOrder, (so) => so.examination, { cascade: true })
+  serviceOrders: ServiceOrder[];
+
+  /**
+   * Đơn thuốc duy nhất của phiếu khám này.
+   * Thay thế cho prescription JSON array cũ.
+   */
+  @OneToOne(() => Prescription, (p) => p.examination, { cascade: true })
+  prescription: Prescription;
 }

@@ -1,32 +1,56 @@
 /**
  * @file src/modules/auth/auth.service.ts
- * @description Business logic cho Authentication
+ * @description Business logic cho Authentication và Phân quyền (RBAC)
  *
  * Kiến trúc: Service layer chứa toàn bộ business logic.
  * Controller chỉ gọi service và trả response — không có logic trong controller.
- * Điều này giúp:
- * - Dễ test (chỉ cần test service, không phụ thuộc HTTP)
- * - Tái sử dụng logic (nhiều controller có thể dùng cùng service)
- * - Tách biệt trách nhiệm rõ ràng (SRP - Single Responsibility Principle)
+ * - Mã hóa mật khẩu với bcrypt
+ * - Cấp phát và xác thực JWT token (Access Token & Refresh Token)
+ * - Triển khai cơ chế xoay vòng Refresh Token (Token Rotation)
+ * - Tự động tạo hồ sơ bệnh nhân trong database transaction
  */
 
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { AppDataSource } from '../../config/database';
 import { User, UserRole } from '../../models/User.entity';
-import { Patient } from '../../models/Patient.entity';
+import { Patient, Gender, BloodType } from '../../models/Patient.entity';
 import { Doctor } from '../../models/Doctor.entity';
 import { env } from '../../config/env';
-import { ConflictError, NotFoundError, UnauthorizedError } from '../../exceptions/AppError';
-import type { LoginDto, RegisterDto } from './auth.dto';
+import {
+  BadRequestError,
+  ConflictError,
+  NotFoundError,
+  UnauthorizedError,
+} from '../../exceptions/AppError';
+import type {
+  LoginDto,
+  RegisterDto,
+  RegisterPatientDto,
+  RefreshTokenDto,
+  ChangePasswordDto,
+} from './auth.dto';
 
-interface TokenPair {
+export interface TokenPair {
   accessToken: string;
   refreshToken: string;
 }
 
-interface AuthResponse {
-  user: Omit<User, 'password' | 'refreshToken'>; // Không trả password ra client
+export interface SanitizedUser {
+  id: string;
+  email: string;
+  fullName: string;
+  role: UserRole;
+  phone?: string | null;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  patient?: Patient | null;
+  doctor?: Doctor | null;
+}
+
+export interface AuthResponse {
+  user: SanitizedUser;
   tokens: TokenPair;
 }
 
@@ -36,44 +60,111 @@ export class AuthService {
   private doctorRepo = AppDataSource.getRepository(Doctor);
 
   /**
-   * Đăng ký tài khoản mới
-   * - Kiểm tra email trùng lặp
-   * - Hash password với bcrypt
-   * - Tạo profile liên kết (Patient hoặc Doctor)
+   * Đăng ký tài khoản cho bệnh nhân (PATIENT)
+   * - Kiểm tra tính duy nhất của email
+   * - Mã hóa mật khẩu với bcrypt
+   * - Tạo tài khoản User và hồ sơ Patient tương ứng trong 1 Transaction an toàn
+   * - Cấp phát bộ JWT token
    */
-  async register(dto: RegisterDto): Promise<AuthResponse> {
-    // Kiểm tra email đã tồn tại chưa
-    const existingUser = await this.userRepo.findOne({ where: { email: dto.email } });
+  async registerPatient(dto: RegisterPatientDto): Promise<AuthResponse> {
+    const existingUser = await this.userRepo.findOne({
+      where: { email: dto.email.toLowerCase().trim() },
+    });
     if (existingUser) {
-      throw new ConflictError('Email đã được sử dụng');
+      throw new ConflictError('Email này đã được đăng ký trong hệ thống');
     }
 
-    // Hash password — KHÔNG lưu plain text
+    // Mã hóa mật khẩu với bcrypt
     const hashedPassword = await bcrypt.hash(dto.password, env.BCRYPT_ROUNDS);
 
-    // Tạo user trong transaction để rollback nếu tạo profile thất bại
+    // Mở transaction đảm bảo tính toàn vẹn (tạo User + tạo Patient)
     const queryRunner = AppDataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
-      // Tạo User
-      const user = this.userRepo.create({
-        email: dto.email,
+      // 1. Tạo User tài khoản bệnh nhân
+      const user = queryRunner.manager.create(User, {
+        email: dto.email.toLowerCase().trim(),
         password: hashedPassword,
-        fullName: dto.fullName,
+        fullName: dto.fullName.trim(),
         phone: dto.phone,
-        role: dto.role as UserRole,
+        role: UserRole.PATIENT,
+        isActive: true,
       });
-      await queryRunner.manager.save(user);
+      const savedUser = await queryRunner.manager.save(user);
 
-      // Tạo profile tương ứng với role
-      if (dto.role === 'PATIENT') {
-        const patient = this.patientRepo.create({ userId: user.id });
-        await queryRunner.manager.save(patient);
-      } else if (dto.role === 'DOCTOR') {
-        const doctor = this.doctorRepo.create({
-          userId: user.id,
+      // 2. Tạo hồ sơ Patient
+      const patient = queryRunner.manager.create(Patient, {
+        userId: savedUser.id,
+        dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : undefined,
+        gender: dto.gender as Gender | undefined,
+        address: dto.address,
+        bloodType: dto.bloodType as BloodType | undefined,
+        allergies: dto.allergies,
+        chronicDiseases: dto.chronicDiseases,
+        insuranceNumber: dto.insuranceNumber,
+        idCardNumber: dto.idCardNumber,
+        emergencyContactName: dto.emergencyContactName,
+        emergencyContactPhone: dto.emergencyContactPhone,
+      });
+      const savedPatient = await queryRunner.manager.save(patient);
+
+      await queryRunner.commitTransaction();
+
+      // Tạo cặp token JWT
+      const tokens = this.generateTokens(savedUser);
+      await this.saveRefreshToken(savedUser.id, tokens.refreshToken);
+
+      savedUser.patient = savedPatient;
+      return {
+        user: this.sanitizeUser(savedUser),
+        tokens,
+      };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  /**
+   * Đăng ký tài khoản (tổng quát, hỗ trợ đăng ký theo vai trò)
+   */
+  async register(dto: RegisterDto): Promise<AuthResponse> {
+    const role = (dto.role || UserRole.PATIENT) as UserRole;
+    if (role === UserRole.PATIENT) {
+      return this.registerPatient(dto);
+    }
+
+    const existingUser = await this.userRepo.findOne({
+      where: { email: dto.email.toLowerCase().trim() },
+    });
+    if (existingUser) {
+      throw new ConflictError('Email này đã được đăng ký trong hệ thống');
+    }
+
+    const hashedPassword = await bcrypt.hash(dto.password, env.BCRYPT_ROUNDS);
+
+    const queryRunner = AppDataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const user = queryRunner.manager.create(User, {
+        email: dto.email.toLowerCase().trim(),
+        password: hashedPassword,
+        fullName: dto.fullName.trim(),
+        phone: dto.phone,
+        role: role as UserRole,
+        isActive: true,
+      });
+      const savedUser = await queryRunner.manager.save(user);
+
+      if (role === UserRole.DOCTOR) {
+        const doctor = queryRunner.manager.create(Doctor, {
+          userId: savedUser.id,
           specialty: 'Đa khoa' as never,
         });
         await queryRunner.manager.save(doctor);
@@ -81,11 +172,13 @@ export class AuthService {
 
       await queryRunner.commitTransaction();
 
-      // Tạo tokens và trả về
-      const tokens = this.generateTokens(user);
-      await this.saveRefreshToken(user.id, tokens.refreshToken);
+      const tokens = this.generateTokens(savedUser);
+      await this.saveRefreshToken(savedUser.id, tokens.refreshToken);
 
-      return { user: this.sanitizeUser(user), tokens };
+      return {
+        user: this.sanitizeUser(savedUser),
+        tokens,
+      };
     } catch (error) {
       await queryRunner.rollbackTransaction();
       throw error;
@@ -96,33 +189,44 @@ export class AuthService {
 
   /**
    * Đăng nhập
-   * - Tìm user theo email
-   * - So sánh password với hash
-   * - Tạo và trả JWT tokens
+   * - Tìm kiếm tài khoản theo email
+   * - Kiểm tra trạng thái hoạt động (isActive)
+   * - Xác thực mật khẩu với bcrypt.compare
+   * - Cấp phát bộ token và lưu hashed refresh token vào DB
    */
   async login(dto: LoginDto): Promise<AuthResponse> {
-    const user = await this.userRepo.findOne({ where: { email: dto.email } });
+    const email = dto.email.toLowerCase().trim();
+    const user = await this.userRepo.findOne({
+      where: { email },
+      relations: ['patient', 'doctor'],
+    });
 
     if (!user || !user.isActive) {
-      // Dùng cùng message để tránh email enumeration attack
-      throw new UnauthorizedError('Email hoặc mật khẩu không đúng');
+      throw new UnauthorizedError('Email hoặc mật khẩu không chính xác');
     }
 
     const isPasswordValid = await bcrypt.compare(dto.password, user.password);
     if (!isPasswordValid) {
-      throw new UnauthorizedError('Email hoặc mật khẩu không đúng');
+      throw new UnauthorizedError('Email hoặc mật khẩu không chính xác');
     }
 
     const tokens = this.generateTokens(user);
     await this.saveRefreshToken(user.id, tokens.refreshToken);
 
-    return { user: this.sanitizeUser(user), tokens };
+    return {
+      user: this.sanitizeUser(user),
+      tokens,
+    };
   }
 
   /**
-   * Làm mới Access Token bằng Refresh Token
+   * Làm mới Access Token (Token Rotation)
+   * - Giải mã và kiểm tra chữ ký Refresh Token
+   * - So khớp bản băm trong cơ sở dữ liệu
+   * - Cấp mới cả Access Token và Refresh Token để tăng cường bảo mật
    */
-  async refreshToken(refreshToken: string): Promise<TokenPair> {
+  async refreshToken(dto: RefreshTokenDto): Promise<TokenPair> {
+    const { refreshToken } = dto;
     let payload: { sub: string };
 
     try {
@@ -132,50 +236,88 @@ export class AuthService {
     }
 
     const user = await this.userRepo.findOne({ where: { id: payload.sub } });
-    if (!user || !user.refreshToken) {
-      throw new UnauthorizedError('Refresh token đã bị thu hồi');
+    if (!user || !user.isActive || !user.refreshToken) {
+      throw new UnauthorizedError('Phiên đăng nhập đã hết hạn hoặc bị thu hồi');
     }
 
-    // Kiểm tra refresh token có khớp không
-    const isValid = await bcrypt.compare(refreshToken, user.refreshToken);
-    if (!isValid) {
+    // Kiểm tra tính hợp lệ của Refresh Token với bản băm lưu trong DB
+    const isTokenMatch = await bcrypt.compare(refreshToken, user.refreshToken);
+    if (!isTokenMatch) {
+      // Phát hiện token không khớp (có thể đã bị can thiệp) -> thu hồi ngay
+      await this.userRepo.update(user.id, { refreshToken: null });
       throw new UnauthorizedError('Refresh token không hợp lệ');
     }
 
-    const tokens = this.generateTokens(user);
-    await this.saveRefreshToken(user.id, tokens.refreshToken);
+    // Cấp phát cặp token mới (Token Rotation)
+    const newTokens = this.generateTokens(user);
+    await this.saveRefreshToken(user.id, newTokens.refreshToken);
 
-    return tokens;
+    return newTokens;
   }
 
   /**
-   * Đăng xuất — xóa refresh token trong DB
+   * Đổi mật khẩu
+   * - Xác thực mật khẩu hiện tại
+   * - Mã hóa mật khẩu mới với bcrypt
+   * - Thu hồi refresh token hiện tại để người dùng đăng nhập lại an toàn
    */
-  async logout(userId: string): Promise<void> {
-    await this.userRepo.update(userId, { refreshToken: null });
+  async changePassword(userId: string, dto: ChangePasswordDto): Promise<void> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundError('Tài khoản người dùng');
+    }
+
+    const isCurrentValid = await bcrypt.compare(dto.currentPassword, user.password);
+    if (!isCurrentValid) {
+      throw new BadRequestError('Mật khẩu hiện tại không chính xác');
+    }
+
+    const newHashedPassword = await bcrypt.hash(dto.newPassword, env.BCRYPT_ROUNDS);
+
+    // Cập nhật mật khẩu mới và vô hiệu hóa refresh token cũ
+    await this.userRepo.update(userId, {
+      password: newHashedPassword,
+      refreshToken: null,
+    });
   }
 
   /**
-   * Lấy thông tin user hiện tại
+   * Lấy thông tin cá nhân (Profile) của người dùng hiện tại
    */
-  async getProfile(userId: string): Promise<User> {
+  async getProfile(userId: string): Promise<SanitizedUser> {
     const user = await this.userRepo.findOne({
       where: { id: userId },
       relations: ['patient', 'doctor'],
     });
 
     if (!user) {
-      throw new NotFoundError('Người dùng');
+      throw new NotFoundError('Người dùng không tồn tại');
     }
 
-    return user;
+    return this.sanitizeUser(user);
   }
 
-  // ---- Private helpers ----
+  /**
+   * Đăng xuất — Xóa refresh token trong cơ sở dữ liệu
+   */
+  async logout(userId: string): Promise<void> {
+    await this.userRepo.update(userId, { refreshToken: null });
+  }
 
+  // ============================================================
+  // PRIVATE HELPER METHODS
+  // ============================================================
+
+  /**
+   * Sinh bộ JWT Tokens (Access Token & Refresh Token)
+   */
   private generateTokens(user: User): TokenPair {
     const accessToken = jwt.sign(
-      { sub: user.id, role: user.role, email: user.email },
+      {
+        sub: user.id,
+        role: user.role,
+        email: user.email,
+      },
       env.JWT_SECRET,
       { expiresIn: env.JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'] },
     );
@@ -187,15 +329,20 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
+  /**
+   * Lưu hash của Refresh Token vào Database để bảo mật
+   */
   private async saveRefreshToken(userId: string, refreshToken: string): Promise<void> {
-    // Hash refresh token trước khi lưu (bảo mật thêm lớp)
     const hashedToken = await bcrypt.hash(refreshToken, 10);
     await this.userRepo.update(userId, { refreshToken: hashedToken });
   }
 
-  private sanitizeUser(user: User): Omit<User, 'password' | 'refreshToken'> {
+  /**
+   * Loại bỏ các trường nhạy cảm trước khi trả về client
+   */
+  private sanitizeUser(user: User): SanitizedUser {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password: _pw, refreshToken: _rt, ...safeUser } = user;
-    return safeUser as Omit<User, 'password' | 'refreshToken'>;
+    const { password: _password, refreshToken: _refreshToken, ...safeUser } = user;
+    return safeUser as SanitizedUser;
   }
 }

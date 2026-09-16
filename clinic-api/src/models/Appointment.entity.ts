@@ -2,9 +2,17 @@
  * @file src/models/Appointment.entity.ts
  * @description Entity Appointment — Lịch hẹn khám bệnh
  *
- * Quan hệ: Patient (1) ←→ (n) Appointment (n) ←→ (1) Doctor
- *          Appointment (1) ←→ (1) Examination
- *          Appointment (1) ←→ (1) Invoice
+ * Quan hệ:
+ * - Patient (1) ←→ (n) Appointment (n) ←→ (1) Doctor
+ * - Appointment (1) ←→ (1) Examination (MedicalRecord)
+ * - Appointment (1) ←→ (1) Invoice
+ *
+ * Index:
+ * - idx_appt_doctor_date: Composite — query "bác sĩ X ngày Y có bao nhiêu lịch?"
+ * - idx_appt_patient_status: Composite — query "bệnh nhân X có lịch PENDING nào không?"
+ * - idx_appt_date: Đơn — query lịch theo ngày (cho tiếp tân)
+ * - idx_appt_booking_code: UNIQUE — tra cứu mã phiếu khám
+ * - idx_appt_status: Lọc theo trạng thái (dashboard)
  */
 
 import {
@@ -16,6 +24,7 @@ import {
   ManyToOne,
   JoinColumn,
   OneToOne,
+  Index,
 } from 'typeorm';
 import { Patient } from './Patient.entity';
 import { Doctor } from './Doctor.entity';
@@ -38,12 +47,15 @@ export enum AppointmentType {
   PHONE = 'PHONE', // Đặt qua điện thoại
 }
 
+@Index('idx_appt_doctor_date', ['doctorId', 'appointmentDate'])
+@Index('idx_appt_patient_status', ['patientId', 'status'])
 @Entity('appointments')
 export class Appointment {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
   // Mã số phiếu khám (hiển thị với người dùng), ví dụ: "PKB-20241201-001"
+  @Index('idx_appt_booking_code', { unique: true })
   @Column({ name: 'booking_code', unique: true, length: 30 })
   bookingCode: string;
 
@@ -63,12 +75,14 @@ export class Appointment {
   @Column({ name: 'doctor_id' })
   doctorId: string;
 
+  @Index('idx_appt_date')
   @Column({ name: 'appointment_date', type: 'date' })
   appointmentDate: Date;
 
   @Column({ name: 'appointment_time', type: 'time' })
   appointmentTime: string; // "09:00", "10:30", v.v.
 
+  @Index('idx_appt_status')
   @Column({ type: 'enum', enum: AppointmentStatus, default: AppointmentStatus.PENDING })
   status: AppointmentStatus;
 

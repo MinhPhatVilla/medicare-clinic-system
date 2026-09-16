@@ -1,8 +1,20 @@
 /**
  * @file src/models/Doctor.entity.ts
- * @description Entity Doctor — Thông tin bác sĩ và lịch làm việc
+ * @description Entity Doctor — Thông tin bác sĩ
  *
- * Quan hệ: Doctor (1) ←→ (1) User | Doctor (1) ←→ (n) Appointment
+ * Quan hệ:
+ * - Doctor (1) ←→ (1) User
+ * - Doctor (1) ←→ (n) DoctorSchedule  ← Lịch làm việc được quản lý qua bảng riêng
+ * - Doctor (1) ←→ (n) Appointment
+ *
+ * Lưu ý kiến trúc:
+ * - Lịch làm việc KHÔNG lưu dạng JSON array nữa.
+ * - Bảng DoctorSchedule cho phép quản lý từng ngày cụ thể, số slot, nghỉ lễ, v.v.
+ *
+ * Index:
+ * - idx_doctors_user_id:    FK lookup
+ * - idx_doctors_specialty:  Tìm kiếm bác sĩ theo chuyên khoa
+ * - idx_doctors_available:  Lọc bác sĩ đang hoạt động
  */
 
 import {
@@ -14,9 +26,11 @@ import {
   OneToOne,
   JoinColumn,
   OneToMany,
+  Index,
 } from 'typeorm';
 import { User } from './User.entity';
 import { Appointment } from './Appointment.entity';
+import { DoctorSchedule } from './DoctorSchedule.entity';
 
 export enum Specialty {
   GENERAL = 'Đa khoa',
@@ -41,9 +55,11 @@ export class Doctor {
   @JoinColumn({ name: 'user_id' })
   user: User;
 
+  @Index('idx_doctors_user_id')
   @Column({ name: 'user_id' })
   userId: string;
 
+  @Index('idx_doctors_specialty')
   @Column({ type: 'enum', enum: Specialty })
   specialty: Specialty;
 
@@ -53,33 +69,33 @@ export class Doctor {
   @Column({ length: 50, nullable: true })
   qualification: string; // Học hàm/học vị (BS, ThS, TS, PGS, GS)
 
+  @Column({ name: 'experience_years', nullable: true })
+  experienceYears: number; // Số năm kinh nghiệm
+
   @Column({ type: 'text', nullable: true })
   bio: string; // Mô tả kinh nghiệm
 
   @Column({ name: 'avatar_url', type: 'text', nullable: true })
   avatarUrl: string;
 
-  @Column({ name: 'consultation_fee', type: 'decimal', precision: 10, scale: 2, default: 200000 })
+  @Column({
+    name: 'consultation_fee',
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    default: 200000,
+  })
   consultationFee: number; // Phí khám cơ bản (VND)
 
-  /**
-   * workingDays: Lưu dưới dạng JSON array
-   * Ví dụ: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-   */
-  @Column({ name: 'working_days', type: 'json', nullable: true })
-  workingDays: string[];
-
-  @Column({ name: 'working_hours_start', type: 'time', nullable: true })
-  workingHoursStart: string; // "08:00"
-
-  @Column({ name: 'working_hours_end', type: 'time', nullable: true })
-  workingHoursEnd: string; // "17:00"
-
+  @Index('idx_doctors_available')
   @Column({ name: 'is_available', default: true })
   isAvailable: boolean;
 
   @Column({ type: 'decimal', precision: 3, scale: 2, default: 0 })
   rating: number; // Đánh giá 0.00 - 5.00
+
+  @Column({ name: 'total_reviews', default: 0 })
+  totalReviews: number; // Tổng số lượt đánh giá
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
@@ -90,4 +106,11 @@ export class Doctor {
   // Relations
   @OneToMany(() => Appointment, (appointment) => appointment.doctor)
   appointments: Appointment[];
+
+  /**
+   * Lịch làm việc theo từng ngày — thay thế cho workingDays JSON array cũ.
+   * Cho phép quản lý chi tiết: số slot, giờ làm, nghỉ lễ, nghỉ đột xuất.
+   */
+  @OneToMany(() => DoctorSchedule, (schedule) => schedule.doctor, { cascade: true })
+  schedules: DoctorSchedule[];
 }

@@ -29,21 +29,22 @@ router.use(authMiddleware);
 // Schema tạo hóa đơn
 const createInvoiceSchema = z.object({
   appointmentId: z.string().uuid(),
-  labFee: z.number().min(0).default(0),
+  serviceFee: z.number().min(0).default(0),
   medicineFee: z.number().min(0).default(0),
   insuranceCovered: z.number().min(0).default(0),
+  discountAmount: z.number().min(0).default(0),
   notes: z.string().optional(),
 });
 
 // Schema xác nhận thanh toán
 const paymentSchema = z.object({
-  paymentMethod: z.enum(['CASH', 'BANK_TRANSFER', 'VIET_QR', 'INSURANCE']),
+  paymentMethod: z.enum(['CASH', 'BANK_TRANSFER', 'VIET_QR', 'MOMO', 'ZALOPAY', 'INSURANCE']),
 });
 
-// POST /billing - Tạo hóa đơn (Receptionist)
+// POST /billing - Tạo hóa đơn (Receptionist, Cashier, Admin)
 router.post(
   '/',
-  roleGuard(UserRole.RECEPTIONIST, UserRole.ADMIN),
+  roleGuard(UserRole.RECEPTIONIST, UserRole.CASHIER, UserRole.ADMIN),
   validate(createInvoiceSchema),
   async (req: Request, res: Response) => {
     const body = req.body;
@@ -68,7 +69,7 @@ router.post(
     }
 
     // Lấy phí khám cơ bản từ Doctor
-    const consultationFee = appointment.doctor?.consultationFee ?? 200000;
+    const consultationFee = Number(appointment.doctor?.consultationFee ?? 200000);
 
     // Tạo invoice number: HD-YYYYMMDD-XXXX
     const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
@@ -76,58 +77,21 @@ router.post(
     const invoiceNumber = `HD-${dateStr}-${random}`;
 
     // Tính tổng tiền
-    const subtotal = consultationFee + body.labFee + body.medicineFee;
-    const totalAmount = Math.max(0, subtotal - body.insuranceCovered);
-
-    // Tạo line items chi tiết
-    const lineItems = [
-      {
-        description: 'Phí khám bệnh',
-        quantity: 1,
-        unitPrice: consultationFee,
-        total: consultationFee,
-      },
-      ...(body.labFee > 0
-        ? [
-            {
-              description: 'Phí xét nghiệm',
-              quantity: 1,
-              unitPrice: body.labFee,
-              total: body.labFee,
-            },
-          ]
-        : []),
-      ...(body.medicineFee > 0
-        ? [
-            {
-              description: 'Phí thuốc',
-              quantity: 1,
-              unitPrice: body.medicineFee,
-              total: body.medicineFee,
-            },
-          ]
-        : []),
-      ...(body.insuranceCovered > 0
-        ? [
-            {
-              description: 'Bảo hiểm y tế (khấu trừ)',
-              quantity: 1,
-              unitPrice: -body.insuranceCovered,
-              total: -body.insuranceCovered,
-            },
-          ]
-        : []),
-    ];
+    const subtotal = consultationFee + Number(body.serviceFee) + Number(body.medicineFee);
+    const totalAmount = Math.max(
+      0,
+      subtotal - Number(body.insuranceCovered) - Number(body.discountAmount),
+    );
 
     const invoice = invoiceRepo.create({
       invoiceNumber,
       appointmentId: body.appointmentId,
       consultationFee,
-      labFee: body.labFee,
+      serviceFee: body.serviceFee,
       medicineFee: body.medicineFee,
       insuranceCovered: body.insuranceCovered,
+      discountAmount: body.discountAmount,
       totalAmount,
-      lineItems,
       notes: body.notes,
       status: InvoiceStatus.PENDING,
     });
@@ -161,10 +125,10 @@ router.get('/appointment/:appointmentId', async (req: Request, res: Response) =>
   ApiResponse.success(res, invoice, 'Thành công');
 });
 
-// PATCH /billing/:id/pay - Xác nhận thanh toán (Receptionist)
+// PATCH /billing/:id/pay - Xác nhận thanh toán (Receptionist, Cashier, Admin)
 router.patch(
   '/:id/pay',
-  roleGuard(UserRole.RECEPTIONIST, UserRole.ADMIN),
+  roleGuard(UserRole.RECEPTIONIST, UserRole.CASHIER, UserRole.ADMIN),
   validate(paymentSchema),
   async (req: Request, res: Response) => {
     const invoice = await invoiceRepo.findOne({ where: { id: req.params.id } });
@@ -177,6 +141,7 @@ router.patch(
     invoice.status = InvoiceStatus.PAID;
     invoice.paymentMethod = req.body.paymentMethod as PaymentMethod;
     invoice.paidAt = new Date();
+    invoice.paidByUserId = req.user!.id;
 
     const updated = await invoiceRepo.save(invoice);
     ApiResponse.success(res, updated, 'Xác nhận thanh toán thành công');

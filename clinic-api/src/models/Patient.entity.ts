@@ -2,7 +2,14 @@
  * @file src/models/Patient.entity.ts
  * @description Entity Patient — Hồ sơ bệnh nhân
  *
- * Quan hệ: Patient (1) ←→ (1) User | Patient (1) ←→ (n) Appointment
+ * Quan hệ:
+ * - Patient (1) ←→ (1) User
+ * - Patient (1) ←→ (n) Appointment
+ *
+ * Index:
+ * - idx_patients_user_id:         FK lookup
+ * - idx_patients_insurance_number: Tìm kiếm theo số BHYT
+ * - idx_patients_id_card:          Tìm kiếm theo CCCD/CMND
  */
 
 import {
@@ -14,6 +21,7 @@ import {
   OneToOne,
   JoinColumn,
   OneToMany,
+  Index,
 } from 'typeorm';
 import { User } from './User.entity';
 import { Appointment } from './Appointment.entity';
@@ -45,6 +53,7 @@ export class Patient {
   @JoinColumn({ name: 'user_id' })
   user: User;
 
+  @Index('idx_patients_user_id')
   @Column({ name: 'user_id' })
   userId: string;
 
@@ -66,11 +75,19 @@ export class Patient {
   @Column({ name: 'chronic_diseases', type: 'text', nullable: true })
   chronicDiseases: string; // Bệnh mãn tính
 
+  @Index('idx_patients_insurance_number')
   @Column({ name: 'insurance_number', length: 50, nullable: true })
   insuranceNumber: string; // Số BHYT
 
+  @Index('idx_patients_id_card')
   @Column({ name: 'id_card_number', length: 20, nullable: true })
   idCardNumber: string; // CCCD/CMND
+
+  @Column({ name: 'emergency_contact_name', length: 100, nullable: true })
+  emergencyContactName: string; // Tên người liên hệ khẩn cấp
+
+  @Column({ name: 'emergency_contact_phone', length: 20, nullable: true })
+  emergencyContactPhone: string; // SĐT người liên hệ khẩn cấp
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
