@@ -20,6 +20,7 @@ import {
   CreateDateColumn,
 } from 'typeorm';
 import { Prescription } from './Prescription.entity';
+import { decimalTransformer } from '../utils/transformers';
 
 export enum MedicineUnit {
   TABLET = 'viên', // Viên nén, viên nang
@@ -68,16 +69,44 @@ export class PrescriptionDetail {
   routeOfAdministration: string; // Đường dùng: "Uống", "Bôi ngoài da", "Nhỏ mắt", "Tiêm"
 
   // Liều dùng chi tiết từng buổi trong ngày
-  @Column({ name: 'morning_dose', type: 'decimal', precision: 5, scale: 2, default: 0 })
+  @Column({
+    name: 'morning_dose',
+    type: 'decimal',
+    precision: 5,
+    scale: 2,
+    default: 0,
+    transformer: decimalTransformer,
+  })
   morningDose: number; // Sáng
 
-  @Column({ name: 'noon_dose', type: 'decimal', precision: 5, scale: 2, default: 0 })
+  @Column({
+    name: 'noon_dose',
+    type: 'decimal',
+    precision: 5,
+    scale: 2,
+    default: 0,
+    transformer: decimalTransformer,
+  })
   noonDose: number; // Trưa
 
-  @Column({ name: 'afternoon_dose', type: 'decimal', precision: 5, scale: 2, default: 0 })
+  @Column({
+    name: 'afternoon_dose',
+    type: 'decimal',
+    precision: 5,
+    scale: 2,
+    default: 0,
+    transformer: decimalTransformer,
+  })
   afternoonDose: number; // Chiều
 
-  @Column({ name: 'evening_dose', type: 'decimal', precision: 5, scale: 2, default: 0 })
+  @Column({
+    name: 'evening_dose',
+    type: 'decimal',
+    precision: 5,
+    scale: 2,
+    default: 0,
+    transformer: decimalTransformer,
+  })
   eveningDose: number; // Tối
 
   @Column({ length: 100, nullable: true })
@@ -92,10 +121,24 @@ export class PrescriptionDetail {
   @Column({ type: 'enum', enum: MedicineUnit, default: MedicineUnit.TABLET })
   unit: MedicineUnit; // Đơn vị tính: viên, gói, chai...
 
-  @Column({ name: 'unit_price', type: 'decimal', precision: 10, scale: 2, default: 0 })
+  @Column({
+    name: 'unit_price',
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    default: 0,
+    transformer: decimalTransformer,
+  })
   unitPrice: number; // Đơn giá (VND/đơn vị)
 
-  @Column({ name: 'total_price', type: 'decimal', precision: 10, scale: 2, default: 0 })
+  @Column({
+    name: 'total_price',
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    default: 0,
+    transformer: decimalTransformer,
+  })
   totalPrice: number; // Thành tiền = quantity × unit_price
 
   @Column({ name: 'usage_instructions', type: 'text', nullable: true })

@@ -30,6 +30,7 @@ import {
 } from 'typeorm';
 import { User } from './User.entity';
 import { Appointment } from './Appointment.entity';
+import { decimalTransformer } from '../utils/transformers';
 import { DoctorSchedule } from './DoctorSchedule.entity';
 
 export enum Specialty {
@@ -81,9 +82,10 @@ export class Doctor {
   @Column({
     name: 'consultation_fee',
     type: 'decimal',
-    precision: 10,
+    precision: 12,
     scale: 2,
     default: 200000,
+    transformer: decimalTransformer,
   })
   consultationFee: number; // Phí khám cơ bản (VND)
 

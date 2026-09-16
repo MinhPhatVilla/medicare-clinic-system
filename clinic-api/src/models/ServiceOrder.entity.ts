@@ -28,6 +28,7 @@ import {
   Index,
 } from 'typeorm';
 import { Examination } from './Examination.entity';
+import { decimalTransformer } from '../utils/transformers';
 
 export enum ServiceType {
   LAB_TEST = 'LAB_TEST', // Xét nghiệm máu, nước tiểu, v.v.
@@ -121,7 +122,13 @@ export class ServiceOrder {
   @Column({ type: 'enum', enum: ServiceOrderStatus, default: ServiceOrderStatus.ORDERED })
   status: ServiceOrderStatus;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    default: 0,
+    transformer: decimalTransformer,
+  })
   fee: number; // Phí dịch vụ (VND)
 
   @Column({ name: 'performed_at', type: 'timestamp', nullable: true })

@@ -14,6 +14,7 @@ import {
   UpdateDateColumn,
   Index,
 } from 'typeorm';
+import { decimalTransformer } from '../utils/transformers';
 
 @Entity('medicines')
 export class Medicine {
@@ -38,9 +39,10 @@ export class Medicine {
   @Column({
     name: 'unit_price',
     type: 'decimal',
-    precision: 10,
+    precision: 12,
     scale: 2,
     default: 0,
+    transformer: decimalTransformer,
   })
   unitPrice: number; // Giá bán niêm yết (VND/đơn vị)
 

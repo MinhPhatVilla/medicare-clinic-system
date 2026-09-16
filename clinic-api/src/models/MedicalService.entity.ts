@@ -16,6 +16,7 @@ import {
   Index,
 } from 'typeorm';
 import { ServiceType, ServiceOrder } from './ServiceOrder.entity';
+import { decimalTransformer } from '../utils/transformers';
 
 @Entity('medical_services')
 export class MedicalService {
@@ -45,6 +46,7 @@ export class MedicalService {
     precision: 12,
     scale: 2,
     default: 0,
+    transformer: decimalTransformer,
   })
   price: number; // Giá niêm yết (VND)
 

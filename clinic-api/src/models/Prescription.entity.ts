@@ -27,6 +27,7 @@ import {
 } from 'typeorm';
 import { Examination } from './Examination.entity';
 import { PrescriptionDetail } from './PrescriptionDetail.entity';
+import { decimalTransformer } from '../utils/transformers';
 
 @Entity('prescriptions')
 export class Prescription {
@@ -62,7 +63,14 @@ export class Prescription {
   @Column({ name: 'valid_until', type: 'date', nullable: true })
   validUntil: Date; // Đơn thuốc có hiệu lực đến ngày (thường 30 ngày)
 
-  @Column({ name: 'total_medicine_fee', type: 'decimal', precision: 10, scale: 2, default: 0 })
+  @Column({
+    name: 'total_medicine_fee',
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    default: 0,
+    transformer: decimalTransformer,
+  })
   totalMedicineFee: number; // Tổng tiền thuốc (auto sum từ PrescriptionDetail)
 
   @CreateDateColumn({ name: 'created_at' })

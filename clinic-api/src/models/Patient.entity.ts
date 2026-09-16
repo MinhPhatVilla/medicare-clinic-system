@@ -27,6 +27,7 @@ import {
 } from 'typeorm';
 import { User } from './User.entity';
 import { Appointment } from './Appointment.entity';
+import { Invoice } from './Invoice.entity';
 
 export enum BloodType {
   A_POSITIVE = 'A+',
@@ -121,4 +122,7 @@ export class Patient {
   // Relations
   @OneToMany(() => Appointment, (appointment) => appointment.patient)
   appointments: Appointment[];
+
+  @OneToMany(() => Invoice, (invoice) => invoice.patient)
+  invoices: Invoice[];
 }

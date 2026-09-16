@@ -1679,7 +1679,7 @@ function renderReceptionistBilling() {
 
         <!-- Bill Details -->
         <div class="card animate-in animate-in-delay-1">
-          <h4 style="margin-bottom: 1rem;">📋 Bảng kê chi phí khám, xét nghiệm và thuốc</h4>
+          <h4 style="margin-bottom: 1rem;">📋 Bảng kê chi phí khám, cận lâm sàng và đơn thuốc</h4>
           <div class="table-wrapper" style="border: none;">
             <table>
               <thead>
@@ -1699,67 +1699,57 @@ function renderReceptionistBilling() {
                   <td>200,000</td>
                   <td><strong>200,000 đ</strong></td>
                 </tr>
-                <tr>
-                  <td>2</td>
-                  <td><strong>Xét nghiệm máu tổng quát (CBC)</strong><br><span class="text-xs text-muted">Chỉ định Cận lâm sàng</span></td>
-                  <td>1</td>
-                  <td>150,000</td>
-                  <td><strong>150,000 đ</strong></td>
-                </tr>
-                <tr>
-                  <td>3</td>
-                  <td><strong>Siêu âm bụng tổng quát</strong><br><span class="text-xs text-muted">Chẩn đoán hình ảnh</span></td>
-                  <td>1</td>
-                  <td>250,000</td>
-                  <td><strong>250,000 đ</strong></td>
-                </tr>
-                <tr>
-                  <td>4</td>
-                  <td><strong>Omeprazol 20mg</strong><br><span class="text-xs text-muted">28 viên × 14 ngày (Uống trước ăn)</span></td>
-                  <td>28</td>
-                  <td>2,500</td>
-                  <td><strong>70,000 đ</strong></td>
-                </tr>
-                <tr>
-                  <td>5</td>
-                  <td><strong>Domperidon 10mg</strong><br><span class="text-xs text-muted">21 viên × 7 ngày</span></td>
-                  <td>21</td>
-                  <td>1,500</td>
-                  <td><strong>31,500 đ</strong></td>
-                </tr>
-                <tr>
-                  <td>6</td>
-                  <td><strong>Vitamin B Complex</strong><br><span class="text-xs text-muted">14 viên × 14 ngày</span></td>
-                  <td>14</td>
-                  <td>1,200</td>
-                  <td><strong>16,800 đ</strong></td>
-                </tr>
+                ${(AppState.examination.clsOrders || []).map((cls, idx) => `
+                  <tr>
+                    <td>${idx + 2}</td>
+                    <td><strong>${cls.name}</strong><br><span class="text-xs text-muted">${cls.type} • Trạng thái: ${cls.status || 'COMPLETED'}</span></td>
+                    <td>1</td>
+                    <td>${Number(cls.price).toLocaleString()}</td>
+                    <td><strong>${Number(cls.price).toLocaleString()} đ</strong></td>
+                  </tr>
+                `).join('')}
+                ${(AppState.examination.prescriptions || []).map((med, idx) => `
+                  <tr>
+                    <td>${(AppState.examination.clsOrders?.length || 0) + idx + 2}</td>
+                    <td><strong>${med.name}</strong><br><span class="text-xs text-muted">${med.qty} ${med.unit} • ${med.doseDetail || med.dose || 'Theo hướng dẫn'}</span></td>
+                    <td>${med.qty}</td>
+                    <td>${Number(med.unitPrice || (med.price / med.qty)).toLocaleString()}</td>
+                    <td><strong>${Number(med.price).toLocaleString()} đ</strong></td>
+                  </tr>
+                `).join('')}
               </tbody>
             </table>
           </div>
 
-          <div class="billing-total" style="background: rgba(15, 23, 42, 0.6); padding: 1.25rem; border-radius: 8px; margin-top: 1.5rem;">
-            <div class="billing-row">
-              <span>Phí khám bệnh:</span>
-              <span>200,000 VNĐ</span>
-            </div>
-            <div class="billing-row">
-              <span>Phí cận lâm sàng (CLS):</span>
-              <span>400,000 VNĐ</span>
-            </div>
-            <div class="billing-row">
-              <span>Phí thuốc theo đơn:</span>
-              <span>118,300 VNĐ</span>
-            </div>
-            <div class="billing-row">
-              <span>Bảo hiểm y tế / Giảm trừ:</span>
-              <span style="color: var(--success);">- 0 VNĐ</span>
-            </div>
-            <div class="billing-row total" style="border-top: 2px solid var(--border-color); padding-top: 0.75rem; margin-top: 0.5rem;">
-              <span style="font-size: 1.1rem; font-weight: 700;">TỔNG THỰC THU:</span>
-              <span style="font-size: 1.35rem; font-weight: 800; color: var(--primary-300);">718,300 VNĐ</span>
-            </div>
-          </div>
+          ${(() => {
+            const clsTotal = (AppState.examination.clsOrders || []).reduce((sum, item) => sum + item.price, 0);
+            const medTotal = (AppState.examination.prescriptions || []).reduce((sum, item) => sum + item.price, 0);
+            const grandTotal = 200000 + clsTotal + medTotal;
+            return `
+              <div class="billing-total" style="background: rgba(15, 23, 42, 0.6); padding: 1.25rem; border-radius: 8px; margin-top: 1.5rem;">
+                <div class="billing-row">
+                  <span>1. Tiền khám bác sĩ (consultation_fee):</span>
+                  <span>200,000 VNĐ</span>
+                </div>
+                <div class="billing-row">
+                  <span>2. Phí dịch vụ cận lâm sàng (service_fee):</span>
+                  <span>${clsTotal.toLocaleString()} VNĐ</span>
+                </div>
+                <div class="billing-row">
+                  <span>3. Phí thuốc theo đơn (medicine_fee):</span>
+                  <span>${medTotal.toLocaleString()} VNĐ</span>
+                </div>
+                <div class="billing-row">
+                  <span>4. Bảo hiểm y tế (BHYT) / Giảm trừ:</span>
+                  <span style="color: var(--success);">- 0 VNĐ</span>
+                </div>
+                <div class="billing-row total" style="border-top: 2px solid var(--border-color); padding-top: 0.75rem; margin-top: 0.5rem;">
+                  <span style="font-size: 1.1rem; font-weight: 700;">TỔNG THANH TOÁN (total_amount):</span>
+                  <span style="font-size: 1.35rem; font-weight: 800; color: var(--primary-300);">${grandTotal.toLocaleString()} VNĐ</span>
+                </div>
+              </div>
+            `;
+          })()}
         </div>
       </div>
 
@@ -2406,7 +2396,10 @@ function confirmBillingPayment() {
     const apt = MOCK_DATA.appointments.find(a => a.code === aptCode);
     if (apt) apt.status = 'completed';
   }
-  showToast(`🎉 Thanh toán thành công 718,300 VNĐ cho ${patient}! Đang in biên lai...`, 'success');
+  const clsTotal = (AppState.examination.clsOrders || []).reduce((sum, item) => sum + item.price, 0);
+  const medTotal = (AppState.examination.prescriptions || []).reduce((sum, item) => sum + item.price, 0);
+  const grandTotal = 200000 + clsTotal + medTotal;
+  showToast(`🎉 Thu ngân đã xác nhận thanh toán thành công ${grandTotal.toLocaleString()} VNĐ cho ${patient}! Trạng thái hóa đơn: PAID. Đang in biên lai...`, 'success');
   setTimeout(() => {
     navigate('receptionist-dashboard', 'receptionist');
   }, 1200);

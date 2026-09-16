@@ -33,6 +33,7 @@ import { Patient } from './Patient.entity';
 import { Doctor } from './Doctor.entity';
 import { ServiceOrder } from './ServiceOrder.entity';
 import { Prescription } from './Prescription.entity';
+import { Invoice } from './Invoice.entity';
 
 export enum ExaminationStatus {
   WAITING = 'WAITING', // Chờ khám (vừa check-in xong)
@@ -164,4 +165,10 @@ export class Examination {
    */
   @OneToOne(() => Prescription, (p) => p.examination, { cascade: true })
   prescription: Prescription;
+
+  /**
+   * Hóa đơn viện phí phát sinh từ phiếu khám bệnh
+   */
+  @OneToMany(() => Invoice, (inv) => inv.examination)
+  invoices: Invoice[];
 }

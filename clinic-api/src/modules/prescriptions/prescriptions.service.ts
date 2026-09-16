@@ -414,6 +414,8 @@ export class PrescriptionsService {
       invoice = this.invoiceRepo.create({
         invoiceNumber,
         appointmentId,
+        examinationId: examination.id,
+        patientId: examination.patientId,
         consultationFee,
         serviceFee,
         medicineFee,
@@ -424,6 +426,8 @@ export class PrescriptionsService {
         notes: 'Bảng kê viện phí chuyển từ Bác sĩ sau khi hoàn tất khám',
       });
     } else {
+      invoice.examinationId = examination.id;
+      if (examination.patientId) invoice.patientId = examination.patientId;
       invoice.consultationFee = consultationFee;
       invoice.serviceFee = serviceFee;
       invoice.medicineFee = medicineFee;
