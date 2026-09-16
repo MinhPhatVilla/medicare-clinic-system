@@ -115,7 +115,10 @@ async function seed(): Promise<void> {
     // Tạo hồ sơ Patient mẫu
     if (userData.role === UserRole.PATIENT) {
       const patient = patientRepo.create({
+        patientCode: 'BN-202412-0001',
         userId: user.id,
+        fullName: user.fullName,
+        phone: user.phone,
         dateOfBirth: new Date('1992-05-15'),
         gender: Gender.MALE,
         address: 'Số 45 Cầu Giấy, Hà Nội',
@@ -126,6 +129,7 @@ async function seed(): Promise<void> {
         idCardNumber: '001092012345',
         emergencyContactName: 'Phạm Thị Mẹ',
         emergencyContactPhone: '0988776655',
+        isActive: true,
       });
       await patientRepo.save(patient);
       console.log(`👤 Tạo hồ sơ bệnh nhân: ${userData.fullName}`);

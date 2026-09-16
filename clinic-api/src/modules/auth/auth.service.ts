@@ -23,6 +23,7 @@ import {
   NotFoundError,
   UnauthorizedError,
 } from '../../exceptions/AppError';
+import { normalizePhoneNumber } from '../../utils/phone.util';
 import type {
   LoginDto,
   RegisterDto,
@@ -67,17 +68,29 @@ export class AuthService {
    * - Cấp phát bộ JWT token
    */
   async registerPatient(dto: RegisterPatientDto): Promise<AuthResponse> {
-    const existingUser = await this.userRepo.findOne({
+    const normalizedPhone = dto.phone ? normalizePhoneNumber(dto.phone) : undefined;
+
+    // Kiểm tra tính duy nhất của email và số điện thoại
+    const existingUserByEmail = await this.userRepo.findOne({
       where: { email: dto.email.toLowerCase().trim() },
     });
-    if (existingUser) {
+    if (existingUserByEmail) {
       throw new ConflictError('Email này đã được đăng ký trong hệ thống');
+    }
+
+    if (normalizedPhone) {
+      const existingUserByPhone = await this.userRepo.findOne({
+        where: { phone: normalizedPhone },
+      });
+      if (existingUserByPhone) {
+        throw new ConflictError('Số điện thoại này đã được sử dụng cho một tài khoản khác');
+      }
     }
 
     // Mã hóa mật khẩu với bcrypt
     const hashedPassword = await bcrypt.hash(dto.password, env.BCRYPT_ROUNDS);
 
-    // Mở transaction đảm bảo tính toàn vẹn (tạo User + tạo Patient)
+    // Mở transaction đảm bảo tính toàn vẹn (tạo User + tạo/liên kết Patient)
     const queryRunner = AppDataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -88,27 +101,69 @@ export class AuthService {
         email: dto.email.toLowerCase().trim(),
         password: hashedPassword,
         fullName: dto.fullName.trim(),
-        phone: dto.phone,
+        phone: normalizedPhone,
         role: UserRole.PATIENT,
         isActive: true,
       });
       const savedUser = await queryRunner.manager.save(user);
 
-      // 2. Tạo hồ sơ Patient
-      const patient = queryRunner.manager.create(Patient, {
-        userId: savedUser.id,
-        dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : undefined,
-        gender: dto.gender as Gender | undefined,
-        address: dto.address,
-        bloodType: dto.bloodType as BloodType | undefined,
-        allergies: dto.allergies,
-        chronicDiseases: dto.chronicDiseases,
-        insuranceNumber: dto.insuranceNumber,
-        idCardNumber: dto.idCardNumber,
-        emergencyContactName: dto.emergencyContactName,
-        emergencyContactPhone: dto.emergencyContactPhone,
-      });
-      const savedPatient = await queryRunner.manager.save(patient);
+      // 2. Kiểm tra xem đã có hồ sơ Patient tạo trước tại quầy (trùng SĐT hoặc CCCD) chưa
+      let patient: Patient | null = null;
+      if (normalizedPhone) {
+        patient = await queryRunner.manager.findOne(Patient, {
+          where: { phone: normalizedPhone, isActive: true },
+        });
+      }
+      if (!patient && dto.idCardNumber) {
+        patient = await queryRunner.manager.findOne(Patient, {
+          where: { idCardNumber: dto.idCardNumber.trim(), isActive: true },
+        });
+      }
+
+      if (patient) {
+        // Nếu hồ sơ đã liên kết với tài khoản khác -> báo lỗi
+        if (patient.userId) {
+          throw new ConflictError('Hồ sơ bệnh nhân này đã được liên kết với một tài khoản khác');
+        }
+        // Tự động liên kết tài khoản Auth mới với hồ sơ Patient đã có sẵn
+        patient.userId = savedUser.id;
+        if (!patient.fullName) patient.fullName = savedUser.fullName;
+        if (!patient.phone && normalizedPhone) patient.phone = normalizedPhone;
+        if (dto.dateOfBirth && !patient.dateOfBirth)
+          patient.dateOfBirth = new Date(dto.dateOfBirth);
+        if (dto.gender && !patient.gender) patient.gender = dto.gender as Gender;
+        if (dto.address && !patient.address) patient.address = dto.address;
+        if (dto.bloodType && !patient.bloodType) patient.bloodType = dto.bloodType as BloodType;
+        if (dto.allergies && !patient.allergies) patient.allergies = dto.allergies;
+        if (dto.chronicDiseases && !patient.chronicDiseases)
+          patient.chronicDiseases = dto.chronicDiseases;
+        if (dto.insuranceNumber && !patient.insuranceNumber)
+          patient.insuranceNumber = dto.insuranceNumber;
+        if (dto.idCardNumber && !patient.idCardNumber) patient.idCardNumber = dto.idCardNumber;
+
+        await queryRunner.manager.save(patient);
+      } else {
+        // Chưa có hồ sơ -> Tạo hồ sơ Patient mới
+        const patientCode = await this.generateUniquePatientCode();
+        const newPatient = queryRunner.manager.create(Patient, {
+          patientCode,
+          userId: savedUser.id,
+          fullName: savedUser.fullName,
+          phone: normalizedPhone,
+          dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : undefined,
+          gender: dto.gender as Gender | undefined,
+          address: dto.address,
+          bloodType: dto.bloodType as BloodType | undefined,
+          allergies: dto.allergies,
+          chronicDiseases: dto.chronicDiseases,
+          insuranceNumber: dto.insuranceNumber,
+          idCardNumber: dto.idCardNumber,
+          emergencyContactName: dto.emergencyContactName,
+          emergencyContactPhone: dto.emergencyContactPhone,
+          isActive: true,
+        });
+        patient = await queryRunner.manager.save(newPatient);
+      }
 
       await queryRunner.commitTransaction();
 
@@ -116,7 +171,7 @@ export class AuthService {
       const tokens = this.generateTokens(savedUser);
       await this.saveRefreshToken(savedUser.id, tokens.refreshToken);
 
-      savedUser.patient = savedPatient;
+      savedUser.patient = patient;
       return {
         user: this.sanitizeUser(savedUser),
         tokens,
@@ -335,6 +390,25 @@ export class AuthService {
   private async saveRefreshToken(userId: string, refreshToken: string): Promise<void> {
     const hashedToken = await bcrypt.hash(refreshToken, 10);
     await this.userRepo.update(userId, { refreshToken: hashedToken });
+  }
+
+  /**
+   * Sinh mã định danh bệnh nhân tự động dạng BN-YYYYMM-XXXX
+   */
+  private async generateUniquePatientCode(): Promise<string> {
+    const date = new Date();
+    const yearMonth = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}`;
+
+    for (let attempts = 0; attempts < 10; attempts++) {
+      const randomNum = Math.floor(1000 + Math.random() * 9000);
+      const code = `BN-${yearMonth}-${randomNum}`;
+      const existing = await this.patientRepo.findOne({ where: { patientCode: code } });
+      if (!existing) {
+        return code;
+      }
+    }
+
+    return `BN-${yearMonth}-${Date.now().toString().slice(-4)}`;
   }
 
   /**

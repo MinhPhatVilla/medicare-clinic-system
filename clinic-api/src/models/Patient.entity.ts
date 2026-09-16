@@ -3,13 +3,15 @@
  * @description Entity Patient — Hồ sơ bệnh nhân
  *
  * Quan hệ:
- * - Patient (1) ←→ (1) User
+ * - Patient (1) ←→ (1) User (nullable: true để hỗ trợ bệnh nhân vãng lai tạo tại quầy)
  * - Patient (1) ←→ (n) Appointment
  *
  * Index:
- * - idx_patients_user_id:         FK lookup
- * - idx_patients_insurance_number: Tìm kiếm theo số BHYT
- * - idx_patients_id_card:          Tìm kiếm theo CCCD/CMND
+ * - idx_patients_code:             Mã bệnh nhân UNIQUE (BN-YYYYMM-XXXX)
+ * - idx_patients_user_id:         FK lookup tới bảng users
+ * - idx_patients_phone:           Tra cứu nhanh theo SĐT
+ * - idx_patients_insurance_number: Tra cứu theo số BHYT
+ * - idx_patients_id_card:          Tra cứu theo CCCD/CMND
  */
 
 import {
@@ -48,14 +50,29 @@ export class Patient {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  // FK → bảng users
-  @OneToOne(() => User, (user) => user.patient, { onDelete: 'CASCADE' })
+  /**
+   * Mã định danh hồ sơ bệnh nhân hiển thị với người dùng / nhân viên
+   * Ví dụ: "BN-202412-0001"
+   */
+  @Index('idx_patients_code', { unique: true })
+  @Column({ name: 'patient_code', unique: true, length: 30, nullable: true })
+  patientCode: string;
+
+  // FK → bảng users (nullable cho bệnh nhân tạo tại phòng khám chưa đăng ký tài khoản)
+  @OneToOne(() => User, (user) => user.patient, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'user_id' })
-  user: User;
+  user?: User | null;
 
   @Index('idx_patients_user_id')
-  @Column({ name: 'user_id' })
-  userId: string;
+  @Column({ name: 'user_id', nullable: true })
+  userId?: string | null;
+
+  @Column({ name: 'full_name', length: 100, nullable: true })
+  fullName: string;
+
+  @Index('idx_patients_phone')
+  @Column({ length: 20, nullable: true })
+  phone: string;
 
   @Column({ name: 'date_of_birth', type: 'date', nullable: true })
   dateOfBirth: Date;
@@ -75,6 +92,9 @@ export class Patient {
   @Column({ name: 'chronic_diseases', type: 'text', nullable: true })
   chronicDiseases: string; // Bệnh mãn tính
 
+  @Column({ name: 'medical_history', type: 'text', nullable: true })
+  medicalHistory: string; // Tiền sử bệnh lý bản thân & gia đình
+
   @Index('idx_patients_insurance_number')
   @Column({ name: 'insurance_number', length: 50, nullable: true })
   insuranceNumber: string; // Số BHYT
@@ -88,6 +108,9 @@ export class Patient {
 
   @Column({ name: 'emergency_contact_phone', length: 20, nullable: true })
   emergencyContactPhone: string; // SĐT người liên hệ khẩn cấp
+
+  @Column({ name: 'is_active', default: true })
+  isActive: boolean;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
