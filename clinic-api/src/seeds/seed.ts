@@ -71,6 +71,7 @@ const doctorProfiles = [
     email: 'doctor.nguyen@medicare.vn',
     specialty: Specialty.GENERAL,
     qualification: 'ThS.BS',
+    roomNumber: 'Phòng 101',
     experienceYears: 10,
     license: 'CCHN-001234',
     bio: 'Bác sĩ đa khoa với hơn 10 năm kinh nghiệm khám và điều trị bệnh nội khoa',
@@ -82,6 +83,7 @@ const doctorProfiles = [
     email: 'doctor.le@medicare.vn',
     specialty: Specialty.CARDIOLOGY,
     qualification: 'TS.BS',
+    roomNumber: 'Phòng 202',
     experienceYears: 15,
     license: 'CCHN-005678',
     bio: 'Chuyên gia tim mạch nhiều năm công tác tại bệnh viện tuyến trung ương',
@@ -177,12 +179,13 @@ async function seed(): Promise<void> {
           workDate: workDate.toISOString().slice(0, 10) as unknown as Date,
           dayOfWeek: daysOfWeek[(workDate.getDay() + 6) % 7] || DayOfWeek.MONDAY,
           startTime: '08:00',
-          endTime: '17:00',
+          endTime: '08:30',
           slotDurationMinutes: 30,
-          maxSlots: 16,
-          bookedSlots: 0,
+          maxPatients: 3,
+          bookedPatients: 0,
           isAvailable: true,
-          location: 'Phòng khám số 102 - Tầng 1',
+          roomNumber: doctor.roomNumber || 'Phòng 101',
+          notes: 'Khung giờ khám buổi sáng',
         });
         await scheduleRepo.save(schedule);
       }

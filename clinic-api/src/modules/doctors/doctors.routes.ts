@@ -1,96 +1,82 @@
 /**
  * @file src/modules/doctors/doctors.routes.ts
- * @description Router + Controller + Service cho Doctors module (compact)
- *
- * Kiến trúc đơn giản hóa: Với module ít logic, có thể gộp lại 1 file
- * trong giai đoạn đầu, sau đó tách ra khi cần thiết.
+ * @description Express Router cho Doctors và Doctor Schedules module
  */
 
-import { Router, Request, Response } from 'express';
-import { z } from 'zod';
-import { AppDataSource } from '../../config/database';
-import { Doctor } from '../../models/Doctor.entity';
-import { ApiResponse } from '../../utils/ApiResponse';
+import { Router } from 'express';
+import { DoctorsController } from './doctors.controller';
 import { authMiddleware } from '../../middlewares/auth.middleware';
 import { roleGuard } from '../../middlewares/roleGuard.middleware';
 import { validate } from '../../middlewares/validate.middleware';
-import { paginate } from '../../utils/pagination';
-import { NotFoundError } from '../../exceptions/AppError';
+import {
+  updateDoctorProfileSchema,
+  createDoctorScheduleSchema,
+  bulkCreateDoctorScheduleSchema,
+  availableSlotsQuerySchema,
+} from './doctors.dto';
 import { UserRole } from '../../models/User.entity';
 
 const router = Router();
-const doctorRepo = AppDataSource.getRepository(Doctor);
+const controller = new DoctorsController();
 
-// Schema cập nhật thông tin bác sĩ
-const updateDoctorSchema = z.object({
-  specialty: z.string().optional(),
-  qualification: z.string().optional(),
-  bio: z.string().optional(),
-  consultationFee: z.number().positive().optional(),
-  experienceYears: z.number().int().nonnegative().optional(),
-  license: z.string().optional(),
-  avatarUrl: z.string().optional(),
-  isAvailable: z.boolean().optional(),
-});
+// ============================================================
+// PUBLIC ROUTES (Dành cho bệnh nhân xem thông tin & đặt lịch)
+// ============================================================
 
-// GET /doctors - Danh sách bác sĩ (public — bệnh nhân chọn bác sĩ)
-router.get('/', async (req: Request, res: Response) => {
-  const qb = doctorRepo
-    .createQueryBuilder('doctor')
-    .leftJoinAndSelect('doctor.user', 'user')
-    .where('user.isActive = true')
-    .orderBy('doctor.rating', 'DESC');
+// GET /doctors - Danh sách bác sĩ
+router.get('/', (req, res) => controller.findAll(req, res));
 
-  // Filter theo chuyên khoa
-  if (req.query.specialty) {
-    qb.andWhere('doctor.specialty = :specialty', { specialty: req.query.specialty });
-  }
+// GET /doctors/:id/available-slots - Tra cứu các slot còn trống theo ngày/tuần
+router.get('/:id/available-slots', validate(availableSlotsQuerySchema, 'query'), (req, res) =>
+  controller.getAvailableSlots(req, res),
+);
 
-  const result = await paginate(qb, {
-    page: Number(req.query.page) || 1,
-    limit: Number(req.query.limit) || 10,
-  });
+// GET /doctors/:id/schedule - Backward compatible
+router.get('/:id/schedule', (req, res) => controller.getDoctorSchedules(req, res));
 
-  ApiResponse.success(res, result.data, 'Lấy danh sách bác sĩ thành công', 200, result.meta);
-});
+// GET /doctors/:id/schedules - Lấy toàn bộ lịch của bác sĩ
+router.get('/:id/schedules', (req, res) => controller.getDoctorSchedules(req, res));
 
-// GET /doctors/:id - Chi tiết bác sĩ (public)
-router.get('/:id', async (req: Request, res: Response) => {
-  const doctor = await doctorRepo.findOne({
-    where: { id: req.params.id },
-    relations: ['user', 'schedules'],
-  });
+// GET /doctors/:id - Chi tiết thông tin bác sĩ
+router.get('/:id', (req, res) => controller.findById(req, res));
 
-  if (!doctor) throw new NotFoundError('Bác sĩ');
-  ApiResponse.success(res, doctor, 'Thành công');
-});
+// ============================================================
+// PROTECTED ROUTES (Dành cho Bác sĩ và Admin)
+// ============================================================
 
-// GET /doctors/:id/schedule - Lịch làm việc của bác sĩ (public)
-router.get('/:id/schedule', async (req: Request, res: Response) => {
-  const doctor = await doctorRepo.findOne({
-    where: { id: req.params.id },
-    relations: ['schedules'],
-  });
-  if (!doctor) throw new NotFoundError('Bác sĩ');
+// POST /doctors/schedules - Đăng ký một khung giờ (Slot) làm việc
+router.post(
+  '/schedules',
+  authMiddleware,
+  roleGuard(UserRole.DOCTOR, UserRole.ADMIN),
+  validate(createDoctorScheduleSchema),
+  (req, res) => controller.createSchedule(req, res),
+);
 
-  // Trả về danh sách lịch làm việc từ bảng DoctorSchedule
-  ApiResponse.success(res, doctor.schedules || [], 'Lấy lịch làm việc bác sĩ thành công');
-});
+// POST /doctors/schedules/bulk - Đăng ký ca làm việc tự động chia slot
+router.post(
+  '/schedules/bulk',
+  authMiddleware,
+  roleGuard(UserRole.DOCTOR, UserRole.ADMIN),
+  validate(bulkCreateDoctorScheduleSchema),
+  (req, res) => controller.bulkCreateSchedule(req, res),
+);
 
-// PATCH /doctors/:id - Cập nhật thông tin bác sĩ (Admin, chính bác sĩ đó)
+// PATCH /doctors/:id - Cập nhật thông tin bác sĩ (chuyên khoa, số phòng, giá khám)
 router.patch(
   '/:id',
   authMiddleware,
   roleGuard(UserRole.DOCTOR, UserRole.ADMIN),
-  validate(updateDoctorSchema),
-  async (req: Request, res: Response) => {
-    const doctor = await doctorRepo.findOne({ where: { id: req.params.id } });
-    if (!doctor) throw new NotFoundError('Bác sĩ');
+  validate(updateDoctorProfileSchema),
+  (req, res) => controller.update(req, res),
+);
 
-    Object.assign(doctor, req.body);
-    const updated = await doctorRepo.save(doctor);
-    ApiResponse.success(res, updated, 'Cập nhật thông tin bác sĩ thành công');
-  },
+// DELETE /doctors/schedules/:scheduleId - Hủy khung giờ làm việc
+router.delete(
+  '/schedules/:scheduleId',
+  authMiddleware,
+  roleGuard(UserRole.DOCTOR, UserRole.ADMIN),
+  (req, res) => controller.deleteSchedule(req, res),
 );
 
 export default router;

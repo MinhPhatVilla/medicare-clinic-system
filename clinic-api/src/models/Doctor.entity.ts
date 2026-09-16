@@ -87,6 +87,9 @@ export class Doctor {
   })
   consultationFee: number; // Phí khám cơ bản (VND)
 
+  @Column({ name: 'room_number', length: 50, nullable: true })
+  roomNumber: string; // Số phòng khám cố định (VD: "Phòng 102", "P.205")
+
   @Index('idx_doctors_available')
   @Column({ name: 'is_available', default: true })
   isAvailable: boolean;
