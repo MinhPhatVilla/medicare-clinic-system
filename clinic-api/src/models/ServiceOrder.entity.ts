@@ -29,6 +29,7 @@ import {
 } from 'typeorm';
 import { Examination } from './Examination.entity';
 import { decimalTransformer } from '../utils/transformers';
+import type { MedicalService } from './MedicalService.entity';
 
 export enum ServiceType {
   LAB_TEST = 'LAB_TEST', // Xét nghiệm máu, nước tiểu, v.v.
@@ -47,6 +48,7 @@ export enum ServiceOrderStatus {
 }
 
 @Entity('service_orders')
+@Index('idx_service_orders_status_created', ['status', 'createdAt'])
 export class ServiceOrder {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -67,7 +69,7 @@ export class ServiceOrder {
   // FK → medical_services (Tùy chọn nếu chọn từ Service Catalog)
   @ManyToOne('MedicalService', 'orders', { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'service_id' })
-  service: any;
+  service: MedicalService;
 
   @Index('idx_so_service_id')
   @Column({ name: 'service_id', nullable: true })

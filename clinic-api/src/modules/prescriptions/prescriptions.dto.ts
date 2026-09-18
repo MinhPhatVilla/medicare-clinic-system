@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import { dateOnly } from '../../utils/validation';
 import { MedicineUnit } from '../../models/PrescriptionDetail.entity';
 
 /**
@@ -67,10 +68,7 @@ export const completeAndLockSchema = z.object({
   icd10Description: z.string().trim().optional(),
   clinicalNotes: z.string().trim().optional(),
   treatmentPlan: z.string().trim().optional(),
-  followUpDate: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Định dạng ngày tái khám phải là YYYY-MM-DD')
-    .optional(),
+  followUpDate: dateOnly.optional(),
   followUpNotes: z.string().trim().max(1000).optional(),
   prescription: z
     .object({
@@ -86,19 +84,13 @@ export type CompleteAndLockDto = z.infer<typeof completeAndLockSchema>;
  * Schema tra cứu danh mục thuốc
  */
 export const medicineCatalogQuerySchema = z.object({
-  search: z.string().trim().optional(),
+  search: z.string().trim().max(200).optional(),
   isActive: z
-    .string()
+    .enum(['true', 'false'])
     .optional()
     .transform((val) => (val === undefined ? undefined : val === 'true')),
-  page: z
-    .string()
-    .optional()
-    .transform((v) => (v ? Math.max(1, parseInt(v, 10)) : 1)),
-  limit: z
-    .string()
-    .optional()
-    .transform((v) => (v ? Math.min(100, Math.max(1, parseInt(v, 10))) : 50)),
+  page: z.coerce.number().int().min(1).max(100000).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
 });
 
 export type MedicineCatalogQueryDto = z.infer<typeof medicineCatalogQuerySchema>;
@@ -107,11 +99,8 @@ export type MedicineCatalogQueryDto = z.infer<typeof medicineCatalogQuerySchema>
  * Schema tra cứu mã bệnh ICD-10
  */
 export const icd10QuerySchema = z.object({
-  search: z.string().trim().optional(),
-  limit: z
-    .string()
-    .optional()
-    .transform((v) => (v ? Math.min(50, Math.max(1, parseInt(v, 10))) : 20)),
+  search: z.string().trim().max(200).optional(),
+  limit: z.coerce.number().int().min(1).max(50).default(20),
 });
 
 export type Icd10QueryDto = z.infer<typeof icd10QuerySchema>;

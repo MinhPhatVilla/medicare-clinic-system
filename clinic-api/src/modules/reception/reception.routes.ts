@@ -3,7 +3,8 @@
  * @description Express Router cho module Lễ tân tiếp đón (Receptionist Intake)
  */
 
-import { Router } from 'express';
+import { recordAccess } from '../../middlewares/recordAccess.middleware';
+import { createRouter } from '../../utils/router';
 import { ReceptionController } from './reception.controller';
 import { authMiddleware } from '../../middlewares/auth.middleware';
 import { roleGuard } from '../../middlewares/roleGuard.middleware';
@@ -16,11 +17,12 @@ import {
 } from './reception.dto';
 import { UserRole } from '../../models/User.entity';
 
-const router = Router();
+const router = createRouter();
 const controller = new ReceptionController();
 
 // Tất cả endpoints cần đăng nhập
 router.use(authMiddleware);
+router.param('doctorId', recordAccess('doctor', 'doctorId'));
 
 // GET /reception/appointments/today - Tìm kiếm lịch hẹn trong ngày bằng Mã đặt lịch / SĐT
 router.get(

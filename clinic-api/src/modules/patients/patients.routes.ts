@@ -3,7 +3,7 @@
  * @description Express Router cho Patients module
  */
 
-import { Router } from 'express';
+import { createRouter } from '../../utils/router';
 import { PatientsController } from './patients.controller';
 import { authMiddleware } from '../../middlewares/auth.middleware';
 import { roleGuard } from '../../middlewares/roleGuard.middleware';
@@ -16,7 +16,7 @@ import {
 } from './patients.dto';
 import { UserRole } from '../../models/User.entity';
 
-const router = Router();
+const router = createRouter();
 const controller = new PatientsController();
 
 // Tất cả các routes đều yêu cầu đăng nhập
@@ -42,7 +42,11 @@ router.get(
 );
 
 // GET /patients/:id - Chi tiết bệnh nhân (Bệnh nhân chỉ xem của mình, nhân viên xem tất cả)
-router.get('/:id', (req, res) => controller.findById(req, res));
+router.get(
+  '/:id',
+  roleGuard(UserRole.PATIENT, UserRole.RECEPTIONIST, UserRole.DOCTOR, UserRole.ADMIN),
+  (req, res) => controller.findById(req, res),
+);
 
 // POST /patients - Tạo mới hồ sơ bệnh nhân (Tiếp tân, Admin)
 router.post(
@@ -53,7 +57,12 @@ router.post(
 );
 
 // PATCH /patients/:id - Cập nhật hồ sơ bệnh nhân
-router.patch('/:id', validate(updatePatientSchema), (req, res) => controller.update(req, res));
+router.patch(
+  '/:id',
+  roleGuard(UserRole.PATIENT, UserRole.RECEPTIONIST, UserRole.ADMIN),
+  validate(updatePatientSchema),
+  (req, res) => controller.update(req, res),
+);
 
 // DELETE /patients/:id - Vô hiệu hóa hồ sơ bệnh nhân (Admin)
 router.delete('/:id', roleGuard(UserRole.ADMIN), (req, res) => controller.delete(req, res));

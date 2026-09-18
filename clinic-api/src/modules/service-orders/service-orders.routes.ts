@@ -3,7 +3,8 @@
  * @description Router cấu hình endpoints cho Quản lý Dịch vụ Kỹ thuật & Chỉ định Cận Lâm Sàng
  */
 
-import { Router } from 'express';
+import { recordAccess } from '../../middlewares/recordAccess.middleware';
+import { createRouter } from '../../utils/router';
 import { ServiceOrdersController } from './service-orders.controller';
 import { authMiddleware } from '../../middlewares/auth.middleware';
 import { roleGuard } from '../../middlewares/roleGuard.middleware';
@@ -16,13 +17,16 @@ import {
   createMedicalServiceSchema,
   enterServiceOrderResultSchema,
   technicianQueueQuerySchema,
+  serviceCatalogQuerySchema,
 } from './service-orders.dto';
 
-const router = Router();
+const router = createRouter();
 const controller = new ServiceOrdersController();
 
 // Tất cả endpoints đều yêu cầu xác thực JWT
 router.use(authMiddleware);
+router.param('id', recordAccess('order', 'id'));
+router.param('examinationId', recordAccess('examination', 'examinationId'));
 
 // ============================================================
 // SERVICE CATALOG (DANH MỤC DỊCH VỤ NIÊM YẾT)
@@ -33,7 +37,7 @@ router.use(authMiddleware);
  * @desc    Lấy danh mục dịch vụ kỹ thuật kèm giá niêm yết
  * @access  All authenticated roles
  */
-router.get('/catalog', controller.getCatalog);
+router.get('/catalog', validate(serviceCatalogQuerySchema, 'query'), controller.getCatalog);
 
 /**
  * @route   POST /api/v1/service-orders/catalog
@@ -58,7 +62,7 @@ router.post(
  */
 router.get(
   '/technician/queue',
-  roleGuard(UserRole.TECHNICIAN, UserRole.DOCTOR, UserRole.ADMIN),
+  roleGuard(UserRole.TECHNICIAN, UserRole.ADMIN),
   validate(technicianQueueQuerySchema, 'query'),
   controller.getTechnicianQueue,
 );
@@ -88,6 +92,7 @@ router.post(
   '/',
   roleGuard(UserRole.DOCTOR, UserRole.ADMIN),
   validate(createServiceOrdersSchema),
+  recordAccess('examination', 'examinationId', 'body'),
   controller.createOrders,
 );
 

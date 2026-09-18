@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import { dateOnly, timeOnly } from '../../utils/validation';
 
 /**
  * Schema đặt lịch khám mới
@@ -11,10 +12,11 @@ import { z } from 'zod';
  * - Trạng thái mặc định: CONFIRMED hoặc PENDING
  */
 export const createAppointmentSchema = z.object({
+  patientId: z.string().uuid().optional(),
   doctorId: z.string().uuid('Doctor ID không hợp lệ'),
   scheduleId: z.string().uuid('Schedule ID không hợp lệ').optional(),
-  appointmentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Ngày khám phải theo format YYYY-MM-DD'),
-  appointmentTime: z.string().regex(/^\d{2}:\d{2}$/, 'Khung giờ khám phải theo format HH:mm'),
+  appointmentDate: dateOnly,
+  appointmentTime: timeOnly,
   chiefComplaint: z
     .string()
     .min(5, 'Triệu chứng ban đầu ít nhất 5 ký tự')
@@ -43,14 +45,8 @@ export type CancelAppointmentDto = z.infer<typeof cancelAppointmentSchema>;
 export const rescheduleAppointmentSchema = z
   .object({
     newScheduleId: z.string().uuid('Schedule ID mới không hợp lệ').optional(),
-    newDate: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/, 'Ngày mới phải theo format YYYY-MM-DD')
-      .optional(),
-    newTime: z
-      .string()
-      .regex(/^\d{2}:\d{2}$/, 'Khung giờ mới phải theo format HH:mm')
-      .optional(),
+    newDate: dateOnly.optional(),
+    newTime: timeOnly.optional(),
     reason: z.string().max(500, 'Lý do không quá 500 ký tự').optional(),
   })
   .refine((data) => data.newScheduleId || (data.newDate && data.newTime), {
@@ -82,7 +78,7 @@ export type UpdateStatusDto = z.infer<typeof updateStatusSchema>;
  * Schema query params cho danh sách chung
  */
 export const appointmentQuerySchema = z.object({
-  page: z.coerce.number().int().positive().default(1),
+  page: z.coerce.number().int().positive().max(100000).default(1),
   limit: z.coerce.number().int().positive().max(100).default(10),
   status: z
     .enum([
@@ -95,7 +91,7 @@ export const appointmentQuerySchema = z.object({
       'NO_SHOW',
     ])
     .optional(),
-  date: z.string().optional(),
+  date: dateOnly.optional(),
   doctorId: z.string().uuid().optional(),
   patientId: z.string().uuid().optional(),
 });
@@ -106,7 +102,7 @@ export type AppointmentQueryDto = z.infer<typeof appointmentQuerySchema>;
  * Schema query params cho API "Xem danh sách lịch hẹn của tôi"
  */
 export const myAppointmentsQuerySchema = z.object({
-  page: z.coerce.number().int().positive().default(1),
+  page: z.coerce.number().int().positive().max(100000).default(1),
   limit: z.coerce.number().int().positive().max(100).default(10),
   status: z
     .enum([
@@ -119,14 +115,8 @@ export const myAppointmentsQuerySchema = z.object({
       'NO_SHOW',
     ])
     .optional(),
-  from: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'from phải theo format YYYY-MM-DD')
-    .optional(),
-  to: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'to phải theo format YYYY-MM-DD')
-    .optional(),
+  from: dateOnly.optional(),
+  to: dateOnly.optional(),
 });
 
 export type MyAppointmentsQueryDto = z.infer<typeof myAppointmentsQuerySchema>;

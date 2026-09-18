@@ -10,16 +10,14 @@
  */
 
 import { In } from 'typeorm';
+import { PrescriptionsService } from '../prescriptions/prescriptions.service';
 import { AppDataSource } from '../../config/database';
 import { Examination, ExaminationStatus } from '../../models/Examination.entity';
 import { Appointment, AppointmentStatus } from '../../models/Appointment.entity';
 import { Doctor } from '../../models/Doctor.entity';
 import { User, UserRole } from '../../models/User.entity';
 import { BadRequestError, ForbiddenError, NotFoundError } from '../../exceptions/AppError';
-import type {
-  SaveDraftExaminationDto,
-  CompleteExaminationDto,
-} from './examinations.dto';
+import type { SaveDraftExaminationDto, CompleteExaminationDto } from './examinations.dto';
 
 export class ExaminationsService {
   private examRepo = AppDataSource.getRepository(Examination);
@@ -56,12 +54,13 @@ export class ExaminationsService {
    * 1. Lấy danh sách hàng đợi bệnh nhân đang chờ khám (Waiting Queue) của bác sĩ theo ngày
    */
   async getWaitingQueue(currentUser: User, dateStr?: string) {
-    const doctor = await this.getDoctorProfile(currentUser);
+    const doctor =
+      currentUser.role === UserRole.DOCTOR ? await this.getDoctorProfile(currentUser) : null;
     const targetDate = dateStr || new Date().toISOString().slice(0, 10);
 
     const appointments = await this.appointmentRepo.find({
       where: {
-        doctorId: doctor.id,
+        ...(doctor ? { doctorId: doctor.id } : {}),
         appointmentDate: targetDate as unknown as Date,
         status: In([AppointmentStatus.CHECKED_IN, AppointmentStatus.IN_PROGRESS]),
       },
@@ -75,13 +74,14 @@ export class ExaminationsService {
     return {
       date: targetDate,
       doctor: {
-        id: doctor.id,
-        fullName: doctor.user?.fullName,
-        specialty: doctor.specialty,
-        roomNumber: doctor.roomNumber,
+        id: doctor?.id,
+        fullName: doctor?.user?.fullName,
+        specialty: doctor?.specialty,
+        roomNumber: doctor?.roomNumber,
       },
       total: appointments.length,
-      currentInProgress: appointments.find((a) => a.status === AppointmentStatus.IN_PROGRESS) || null,
+      currentInProgress:
+        appointments.find((a) => a.status === AppointmentStatus.IN_PROGRESS) || null,
       queue: appointments.map((a) => ({
         appointmentId: a.id,
         bookingCode: a.bookingCode,
@@ -108,237 +108,76 @@ export class ExaminationsService {
   /**
    * 2. Bác sĩ bấm "Bắt đầu khám": Cập nhật trạng thái phiếu khám sang IN_PROGRESS
    */
-  async startExamination(idOrAppointmentId: string, currentUser: User): Promise<Examination> {
-    const doctor = await this.getDoctorProfile(currentUser);
-
-    return await AppDataSource.transaction(async (manager) => {
-      // Tìm theo ID examination hoặc ID appointment
-      let examination = await manager.getRepository(Examination).findOne({
-        where: [{ id: idOrAppointmentId }, { appointmentId: idOrAppointmentId }],
-        relations: ['appointment', 'patient', 'doctor'],
-      });
-
-      // Nếu chưa có examination nhưng có appointment hợp lệ
-      if (!examination) {
-        const appt = await manager.getRepository(Appointment).findOne({
-          where: { id: idOrAppointmentId },
-          relations: ['patient', 'doctor'],
-        });
-
-        if (!appt) {
-          throw new NotFoundError('Không tìm thấy phiếu khám hoặc lịch hẹn');
-        }
-
-        examination = manager.getRepository(Examination).create({
-          appointmentId: appt.id,
-          patientId: appt.patientId,
-          doctorId: appt.doctorId,
-          status: ExaminationStatus.WAITING,
-          chiefComplaintDetail: appt.chiefComplaint,
-        });
-        examination = await manager.getRepository(Examination).save(examination);
-        examination.appointment = appt;
-      }
-
-      // Kiểm tra quyền: Chỉ bác sĩ phụ trách hoặc Admin được thao tác
-      if (
-        currentUser.role === UserRole.DOCTOR &&
-        examination.doctorId &&
-        examination.doctorId !== doctor.id
-      ) {
-        throw new ForbiddenError('Bạn không phải bác sĩ phụ trách ca khám này');
-      }
-
-      // Cập nhật trạng thái Examination
-      examination.status = ExaminationStatus.IN_PROGRESS;
-      examination.doctorId = doctor.id;
-      const savedExam = await manager.getRepository(Examination).save(examination);
-
-      // Cập nhật trạng thái Appointment tương ứng
-      if (examination.appointmentId) {
-        const appointment = await manager
-          .getRepository(Appointment)
-          .findOne({ where: { id: examination.appointmentId } });
-
-        if (appointment) {
-          appointment.status = AppointmentStatus.IN_PROGRESS;
-          await manager.getRepository(Appointment).save(appointment);
-        }
-      }
-
-      return (await manager.getRepository(Examination).findOne({
-        where: { id: savedExam.id },
-        relations: ['appointment', 'patient', 'doctor'],
-      })) as Examination;
-    });
+  async startExamination(id: string, currentUser: User): Promise<Examination> {
+    return this.mutateExamination(id, {}, currentUser, 'start');
   }
 
-  /**
-   * 3. Cơ chế Lưu nháp (Auto-save draft)
-   * Lưu nhanh các chỉ số sinh tồn và nội dung lâm sàng khi bác sĩ đang gõ
-   */
   async saveDraft(
-    idOrAppointmentId: string,
+    id: string,
     dto: SaveDraftExaminationDto,
     currentUser: User,
   ): Promise<Examination> {
-    const doctor = await this.getDoctorProfile(currentUser);
-
-    return await AppDataSource.transaction(async (manager) => {
-      let examination = await manager.getRepository(Examination).findOne({
-        where: [{ id: idOrAppointmentId }, { appointmentId: idOrAppointmentId }],
-        relations: ['appointment'],
-      });
-
-      if (!examination) {
-        throw new NotFoundError('Phiếu khám không tồn tại');
-      }
-
-      if (
-        currentUser.role === UserRole.DOCTOR &&
-        examination.doctorId &&
-        examination.doctorId !== doctor.id
-      ) {
-        throw new ForbiddenError('Bạn không phải bác sĩ phụ trách ca khám này');
-      }
-
-      // Không cho phép lưu nháp nếu hồ sơ đã bị khóa sau khi hoàn tất khám
-      if (examination.isLocked || examination.status === ExaminationStatus.COMPLETED) {
-        throw new BadRequestError(
-          'Hồ sơ khám bệnh này đã hoàn tất và bị khóa. Không thể sửa đổi bản nháp.',
-        );
-      }
-
-      // Tính BMI nếu có thông tin cân nặng & chiều cao
-      const targetWeight = dto.weight !== undefined ? dto.weight : examination.weight;
-      const targetHeight = dto.height !== undefined ? dto.height : examination.height;
-      const calculatedBmi = this.calculateBMI(targetWeight, targetHeight);
-
-      // Cập nhật thông tin sinh hiệu & lâm sàng
-      if (dto.weight !== undefined) examination.weight = dto.weight;
-      if (dto.height !== undefined) examination.height = dto.height;
-      if (calculatedBmi !== undefined) examination.bmi = calculatedBmi;
-      if (dto.bloodPressure !== undefined) examination.bloodPressure = dto.bloodPressure;
-      if (dto.heartRate !== undefined) examination.heartRate = dto.heartRate;
-      if (dto.temperature !== undefined) examination.temperature = dto.temperature;
-      if (dto.spo2 !== undefined) examination.spo2 = dto.spo2;
-      if (dto.respiratoryRate !== undefined) examination.respiratoryRate = dto.respiratoryRate;
-
-      if (dto.chiefComplaintDetail !== undefined) examination.chiefComplaintDetail = dto.chiefComplaintDetail;
-      if (dto.medicalHistory !== undefined) examination.medicalHistory = dto.medicalHistory;
-      if (dto.preliminaryDiagnosis !== undefined) examination.preliminaryDiagnosis = dto.preliminaryDiagnosis;
-      if (dto.diagnosis !== undefined) examination.diagnosis = dto.diagnosis;
-      if (dto.icd10Code !== undefined) examination.icd10Code = dto.icd10Code;
-      if (dto.icd10Description !== undefined) examination.icd10Description = dto.icd10Description;
-      if (dto.clinicalNotes !== undefined) examination.clinicalNotes = dto.clinicalNotes;
-      if (dto.treatmentPlan !== undefined) examination.treatmentPlan = dto.treatmentPlan;
-      if (dto.followUpDate !== undefined) examination.followUpDate = new Date(dto.followUpDate);
-      if (dto.followUpNotes !== undefined) examination.followUpNotes = dto.followUpNotes;
-
-      // Đánh dấu bản nháp & duy trì trạng thái IN_PROGRESS
-      examination.isDraft = true;
-      if (examination.status === ExaminationStatus.WAITING) {
-        examination.status = ExaminationStatus.IN_PROGRESS;
-      }
-
-      const saved = await manager.getRepository(Examination).save(examination);
-
-      // Đồng bộ Appointment sang IN_PROGRESS nếu chưa
-      if (examination.appointmentId) {
-        await manager.getRepository(Appointment).update(
-          { id: examination.appointmentId, status: AppointmentStatus.CHECKED_IN },
-          { status: AppointmentStatus.IN_PROGRESS },
-        );
-      }
-
-      return (await manager.getRepository(Examination).findOne({
-        where: { id: saved.id },
-        relations: ['appointment', 'patient', 'doctor'],
-      })) as Examination;
-    });
+    return this.mutateExamination(id, dto, currentUser, 'draft');
   }
 
-  /**
-   * 4. Hoàn tất khám bệnh (Complete Examination)
-   */
   async completeExamination(
-    idOrAppointmentId: string,
+    id: string,
     dto: CompleteExaminationDto,
     currentUser: User,
   ): Promise<Examination> {
-    const doctor = await this.getDoctorProfile(currentUser);
+    return this.mutateExamination(id, dto, currentUser, 'complete');
+  }
 
-    return await AppDataSource.transaction(async (manager) => {
-      const examination = await manager.getRepository(Examination).findOne({
-        where: [{ id: idOrAppointmentId }, { appointmentId: idOrAppointmentId }],
-        relations: ['appointment'],
+  private async mutateExamination(
+    id: string,
+    dto: SaveDraftExaminationDto,
+    user: User,
+    mode: 'start' | 'draft' | 'complete',
+  ): Promise<Examination> {
+    return AppDataSource.transaction(async (manager) => {
+      const exam = await manager.findOne(Examination, {
+        where: [{ id }, { appointmentId: id }],
+        lock: { mode: 'pessimistic_write' },
       });
-
-      if (!examination) {
-        throw new NotFoundError('Phiếu khám không tồn tại');
-      }
-
+      if (!exam) throw new NotFoundError('Phieu kham');
+      const appointment = await manager.findOneByOrFail(Appointment, { id: exam.appointmentId });
+      const doctor = await manager.findOneByOrFail(Doctor, {
+        id: exam.doctorId || appointment.doctorId,
+      });
+      if (user.role !== UserRole.ADMIN && doctor.userId !== user.id) throw new ForbiddenError();
       if (
-        currentUser.role === UserRole.DOCTOR &&
-        examination.doctorId &&
-        examination.doctorId !== doctor.id
+        exam.isLocked ||
+        ![ExaminationStatus.WAITING, ExaminationStatus.IN_PROGRESS].includes(exam.status)
       ) {
-        throw new ForbiddenError('Bạn không phải bác sĩ phụ trách ca khám này');
+        throw new BadRequestError('Ho so da dong, khong the sua doi');
       }
-
-      // Tính BMI
-      const targetWeight = dto.weight !== undefined ? dto.weight : examination.weight;
-      const targetHeight = dto.height !== undefined ? dto.height : examination.height;
-      const calculatedBmi = this.calculateBMI(targetWeight, targetHeight);
-
-      // Cập nhật thông tin
-      if (dto.weight !== undefined) examination.weight = dto.weight;
-      if (dto.height !== undefined) examination.height = dto.height;
-      if (calculatedBmi !== undefined) examination.bmi = calculatedBmi;
-      if (dto.bloodPressure !== undefined) examination.bloodPressure = dto.bloodPressure;
-      if (dto.heartRate !== undefined) examination.heartRate = dto.heartRate;
-      if (dto.temperature !== undefined) examination.temperature = dto.temperature;
-      if (dto.spo2 !== undefined) examination.spo2 = dto.spo2;
-      if (dto.respiratoryRate !== undefined) examination.respiratoryRate = dto.respiratoryRate;
-
-      if (dto.chiefComplaintDetail !== undefined) examination.chiefComplaintDetail = dto.chiefComplaintDetail;
-      if (dto.medicalHistory !== undefined) examination.medicalHistory = dto.medicalHistory;
-      if (dto.preliminaryDiagnosis !== undefined) examination.preliminaryDiagnosis = dto.preliminaryDiagnosis;
-      examination.diagnosis = dto.diagnosis;
-      if (dto.icd10Code !== undefined) examination.icd10Code = dto.icd10Code;
-      if (dto.icd10Description !== undefined) examination.icd10Description = dto.icd10Description;
-      if (dto.clinicalNotes !== undefined) examination.clinicalNotes = dto.clinicalNotes;
-      if (dto.treatmentPlan !== undefined) examination.treatmentPlan = dto.treatmentPlan;
-      if (dto.followUpDate !== undefined) examination.followUpDate = new Date(dto.followUpDate);
-      if (dto.followUpNotes !== undefined) examination.followUpNotes = dto.followUpNotes;
-
-      // Kiểm tra hồ sơ đã khóa chưa
-      if (examination.isLocked || examination.status === ExaminationStatus.COMPLETED) {
-        throw new BadRequestError(
-          'Hồ sơ khám bệnh đã hoàn tất và bị khóa. Không thể sửa đổi tùy tiện.',
-        );
+      if (
+        ![AppointmentStatus.CHECKED_IN, AppointmentStatus.IN_PROGRESS].includes(appointment.status)
+      ) {
+        throw new BadRequestError('Can check-in truoc khi kham');
       }
-
-      // Đánh dấu hoàn thành & khóa hồ sơ
-      examination.status = ExaminationStatus.COMPLETED;
-      examination.isDraft = false;
-      examination.isLocked = true;
-      examination.completedAt = new Date();
-
-      const saved = await manager.getRepository(Examination).save(examination);
-
-      // Cập nhật Appointment sang COMPLETED
-      if (examination.appointmentId) {
-        await manager.getRepository(Appointment).update(
-          { id: examination.appointmentId },
-          { status: AppointmentStatus.COMPLETED },
-        );
+      const { followUpDate, ...fields } = dto;
+      Object.assign(exam, fields);
+      if (followUpDate !== undefined) exam.followUpDate = new Date(followUpDate);
+      const bmi = this.calculateBMI(Number(exam.weight), Number(exam.height));
+      if (bmi !== undefined) {
+        if (bmi > 999.99) throw new BadRequestError('Chi so can nang/chieu cao khong hop le');
+        exam.bmi = bmi;
       }
-
-      return (await manager.getRepository(Examination).findOne({
-        where: { id: saved.id },
+      exam.doctorId = doctor.id;
+      exam.status = ExaminationStatus.IN_PROGRESS;
+      exam.isDraft = mode === 'draft';
+      await manager.save(exam);
+      await manager.update(Appointment, appointment.id, { status: AppointmentStatus.IN_PROGRESS });
+      if (mode === 'complete') {
+        await new PrescriptionsService(manager).completeAndLockExamination(exam.id, {
+          diagnosis: dto.diagnosis!,
+        });
+      }
+      return manager.findOneOrFail(Examination, {
+        where: { id: exam.id },
         relations: ['appointment', 'patient', 'doctor'],
-      })) as Examination;
+      });
     });
   }
 

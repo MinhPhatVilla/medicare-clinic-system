@@ -104,7 +104,7 @@ export class AppointmentsController {
    * POST /appointments/checkin/:bookingCode - Check-in qua QR code
    */
   async checkInByQR(req: Request, res: Response): Promise<void> {
-    const appointment = await appointmentsService.checkInByQR(req.params.bookingCode);
+    const appointment = await appointmentsService.checkInByQR(req.params.bookingCode, req.user!);
     ApiResponse.success(res, appointment, 'Check-in thành công');
   }
 }

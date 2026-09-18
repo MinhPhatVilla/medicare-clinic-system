@@ -16,21 +16,29 @@ import { QueryFailedError } from 'typeorm';
 import { ZodError } from 'zod';
 import { AppError, ValidationError } from './AppError';
 import { logger } from '../utils/logger';
-import { env } from '../config/env';
 
 export const globalErrorHandler = (
   err: Error,
   req: Request,
   res: Response,
-  _next: NextFunction,
+  next: NextFunction,
 ): void => {
   // Log lỗi (luôn log trong development, chỉ log error trong production)
-  logger.error(`[${req.method}] ${req.path} — ${err.message}`, {
-    stack: err.stack,
-    body: req.body,
-    params: req.params,
-    query: req.query,
-  });
+  if (res.headersSent) {
+    next(err);
+    return;
+  }
+  // Never log credentials, medical payloads, SQL values or bearer tokens.
+  if (!(err instanceof AppError) && !(err instanceof ZodError)) {
+    logger.error('Request failed', { method: req.method, errorType: err.name });
+  }
+  const parserError = err as Error & { type?: string };
+  if (parserError.type === 'entity.parse.failed' || parserError.type === 'entity.too.large') {
+    res
+      .status(parserError.type === 'entity.too.large' ? 413 : 400)
+      .json({ success: false, message: 'Request body khong hop le' });
+    return;
+  }
 
   // === Xử lý từng loại lỗi ===
 
@@ -65,6 +73,18 @@ export const globalErrorHandler = (
 
   // 3. Lỗi TypeORM (database errors)
   if (err instanceof QueryFailedError) {
+    if (['23503', '23514', '23P01'].includes((err as unknown as { code: string }).code)) {
+      res.status(409).json({ success: false, message: 'Du lieu vi pham rang buoc toan ven' });
+      return;
+    }
+    if (
+      ['22P02', '22003', '22007', '22008', '22001'].includes(
+        (err as unknown as { code: string }).code,
+      )
+    ) {
+      res.status(422).json({ success: false, message: 'Du lieu dau vao khong hop le' });
+      return;
+    }
     // Duplicate key constraint violation (PostgreSQL error code 23505)
     if ((err as unknown as { code: string }).code === '23505') {
       res.status(409).json({
@@ -82,7 +102,7 @@ export const globalErrorHandler = (
   }
 
   // 4. JWT errors
-  if (err.name === 'JsonWebTokenError') {
+  if (err.name === 'JsonWebTokenError' || err.name === 'NotBeforeError') {
     res.status(401).json({ success: false, message: 'Token không hợp lệ' });
     return;
   }
@@ -97,7 +117,6 @@ export const globalErrorHandler = (
     success: false,
     message: 'Lỗi hệ thống nội bộ. Vui lòng thử lại sau.',
     // Chỉ hiển thị stack trace trong development để debug
-    ...(env.NODE_ENV === 'development' && { stack: err.stack }),
   });
 };
 

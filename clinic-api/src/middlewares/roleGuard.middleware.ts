@@ -18,7 +18,7 @@ import { ForbiddenError, UnauthorizedError } from '../exceptions/AppError';
  * @param roles - Danh sách role được phép truy cập endpoint
  */
 export const roleGuard = (...roles: UserRole[]) => {
-  return (req: Request, _res: Response, next: NextFunction): void => {
+  const middleware = (req: Request, _res: Response, next: NextFunction): void => {
     // authMiddleware phải chạy trước roleGuard
     if (!req.user) {
       throw new UnauthorizedError();
@@ -32,4 +32,5 @@ export const roleGuard = (...roles: UserRole[]) => {
 
     next();
   };
+  return Object.assign(middleware, { roles });
 };

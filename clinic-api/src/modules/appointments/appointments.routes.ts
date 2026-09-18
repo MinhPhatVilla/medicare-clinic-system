@@ -3,7 +3,8 @@
  * @description Express Router cho Appointments module
  */
 
-import { Router } from 'express';
+import { recordAccess } from '../../middlewares/recordAccess.middleware';
+import { createRouter } from '../../utils/router';
 import { AppointmentsController } from './appointments.controller';
 import { authMiddleware } from '../../middlewares/auth.middleware';
 import { roleGuard } from '../../middlewares/roleGuard.middleware';
@@ -18,11 +19,13 @@ import {
 } from './appointments.dto';
 import { UserRole } from '../../models/User.entity';
 
-const router = Router();
+const router = createRouter();
 const controller = new AppointmentsController();
 
 // Tất cả endpoints cần xác thực tài khoản JWT
 router.use(authMiddleware);
+router.use(roleGuard(UserRole.PATIENT, UserRole.DOCTOR, UserRole.RECEPTIONIST, UserRole.ADMIN));
+router.param('id', recordAccess('appointment', 'id'));
 
 // GET /appointments/my - Xem danh sách lịch hẹn của tôi (Đặt trước /:id)
 router.get('/my', validate(myAppointmentsQuerySchema, 'query'), (req, res) =>

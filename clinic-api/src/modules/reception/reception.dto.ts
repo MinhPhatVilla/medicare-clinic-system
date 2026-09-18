@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import { dateOnly } from '../../utils/validation';
 import { isValidPhoneNumber, normalizePhoneNumber } from '../../utils/phone.util';
 import { Gender } from '../../models/Patient.entity';
 
@@ -13,10 +14,7 @@ import { Gender } from '../../models/Patient.entity';
  */
 export const searchTodayAppointmentsSchema = z.object({
   query: z.string().trim().min(1, 'Từ khóa tìm kiếm không được để trống'),
-  date: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Ngày phải theo format YYYY-MM-DD')
-    .optional(),
+  date: dateOnly.optional(),
   doctorId: z.string().uuid('Doctor ID không hợp lệ').optional(),
   status: z
     .enum([
@@ -29,7 +27,7 @@ export const searchTodayAppointmentsSchema = z.object({
       'NO_SHOW',
     ])
     .optional(),
-  page: z.coerce.number().int().positive().default(1),
+  page: z.coerce.number().int().positive().max(100000).default(1),
   limit: z.coerce.number().int().positive().max(100).default(20),
 });
 
@@ -73,10 +71,7 @@ export const walkInPatientSchema = z
       .refine(isValidPhoneNumber, 'Số điện thoại Việt Nam không hợp lệ')
       .transform(normalizePhoneNumber)
       .optional(),
-    dateOfBirth: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/, 'Ngày sinh phải theo định dạng YYYY-MM-DD')
-      .optional(),
+    dateOfBirth: dateOnly.optional(),
     gender: z.nativeEnum(Gender).default(Gender.MALE).optional(),
     idCardNumber: z
       .string()
@@ -111,10 +106,7 @@ export type WalkInPatientDto = z.infer<typeof walkInPatientSchema>;
  * Schema xem hàng đợi khám bệnh của bác sĩ trong ngày
  */
 export const doctorQueueQuerySchema = z.object({
-  date: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Ngày phải theo format YYYY-MM-DD')
-    .optional(),
+  date: dateOnly.optional(),
 });
 
 export type DoctorQueueQueryDto = z.infer<typeof doctorQueueQuerySchema>;

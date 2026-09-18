@@ -3,7 +3,7 @@
  * @description Express Router cho Auth module (Xác thực & Phân quyền)
  */
 
-import { Router } from 'express';
+import { createRouter } from '../../utils/router';
 import { AuthController } from './auth.controller';
 import { authMiddleware } from '../../middlewares/auth.middleware';
 import { validate } from '../../middlewares/validate.middleware';
@@ -14,7 +14,7 @@ import {
   changePasswordSchema,
 } from './auth.dto';
 
-const router = Router();
+const router = createRouter();
 const authController = new AuthController();
 
 // ============================================================

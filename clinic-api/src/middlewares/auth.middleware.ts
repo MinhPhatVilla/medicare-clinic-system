@@ -12,6 +12,7 @@
 
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { z } from 'zod';
 import { AppDataSource } from '../config/database';
 import { User } from '../models/User.entity';
 import { UnauthorizedError } from '../exceptions/AppError';
@@ -53,7 +54,10 @@ export const authMiddleware = async (
   const token = authHeader.split(' ')[1];
 
   // Verify token
-  const payload = jwt.verify(token, env.JWT_SECRET) as JwtPayload;
+  const payload = jwt.verify(token, env.JWT_SECRET, { algorithms: ['HS256'] }) as JwtPayload;
+  if (!payload || !z.string().uuid().safeParse(payload.sub).success) {
+    throw new UnauthorizedError('Token subject khong hop le');
+  }
 
   // Lấy user từ database (đảm bảo user vẫn tồn tại và còn active)
   const userRepository = AppDataSource.getRepository(User);

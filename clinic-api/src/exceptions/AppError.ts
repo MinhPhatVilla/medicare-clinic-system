@@ -16,7 +16,7 @@ export class AppError extends Error {
     this.isOperational = isOperational;
 
     // Quan trọng: Cần set prototype để instanceof hoạt động đúng với TypeScript
-    Object.setPrototypeOf(this, AppError.prototype);
+    Object.setPrototypeOf(this, new.target.prototype);
     Error.captureStackTrace(this, this.constructor);
   }
 }

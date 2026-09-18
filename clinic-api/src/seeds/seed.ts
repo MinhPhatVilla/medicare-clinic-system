@@ -4,17 +4,20 @@
  *
  * Chạy: npm run seed
  *
- * Tạo sẵn các tài khoản test với đầy đủ 5 Roles:
+ * Tạo sẵn các tài khoản test với đầy đủ vai trò chính:
  * - admin@medicare.vn / Admin@123           (ADMIN)
  * - doctor.nguyen@medicare.vn / Doctor@123  (DOCTOR)
  * - doctor.le@medicare.vn / Doctor@123      (DOCTOR)
  * - receptionist@medicare.vn / Recept@123   (RECEPTIONIST)
  * - cashier@medicare.vn / Cashier@123       (CASHIER)
+ * - pharmacist@medicare.vn / Pharma@123     (PHARMACIST)
  * - patient@medicare.vn / Patient@123       (PATIENT)
  */
 
 import 'reflect-metadata';
 import bcrypt from 'bcrypt';
+import { env } from '../config/env';
+import { logger } from '../utils/logger';
 import { AppDataSource } from '../config/database';
 import { User, UserRole } from '../models/User.entity';
 import { Doctor, Specialty } from '../models/Doctor.entity';
@@ -25,6 +28,8 @@ import { Medicine } from '../models/Medicine.entity';
 import { ServiceType } from '../models/ServiceOrder.entity';
 
 const seedUsers = [
+  { email: 'manager@medicare.vn', password: 'Manager@123', fullName: 'Quan ly', phone: '0901000008', role: UserRole.MANAGER },
+  { email: 'technician@medicare.vn', password: 'Tech@123', fullName: 'Ky thuat vien', phone: '0901000009', role: UserRole.TECHNICIAN },
   {
     email: 'admin@medicare.vn',
     password: 'Admin@123',
@@ -59,6 +64,13 @@ const seedUsers = [
     fullName: 'Thu Ngân Hoàng Yến',
     phone: '0901000005',
     role: UserRole.CASHIER,
+  },
+  {
+    email: 'pharmacist@medicare.vn',
+    password: 'Pharma@123',
+    fullName: 'Dược sĩ Nguyễn Mai',
+    phone: '0901000007',
+    role: UserRole.PHARMACIST,
   },
   {
     email: 'patient@medicare.vn',
@@ -97,7 +109,8 @@ const doctorProfiles = [
 ];
 
 async function seed(): Promise<void> {
-  console.log('🌱 Bắt đầu seed dữ liệu MediCare...');
+  if (env.NODE_ENV === 'production') throw new Error('Demo seed is disabled in production');
+  logger.info('🌱 Bắt đầu seed dữ liệu MediCare...');
 
   await AppDataSource.initialize();
   const userRepo = AppDataSource.getRepository(User);
@@ -108,14 +121,14 @@ async function seed(): Promise<void> {
   for (const userData of seedUsers) {
     const existing = await userRepo.findOne({ where: { email: userData.email } });
     if (existing) {
-      console.log(`⏭️  Bỏ qua (đã tồn tại): ${userData.email}`);
+      logger.info(`⏭️  Bỏ qua (đã tồn tại): ${userData.email}`);
       continue;
     }
 
     const hashed = await bcrypt.hash(userData.password, 12);
     const user = userRepo.create({ ...userData, password: hashed });
     await userRepo.save(user);
-    console.log(`✅ Tạo user: ${userData.email} (${userData.role})`);
+    logger.info(`✅ Tạo user: ${userData.email} (${userData.role})`);
 
     // Tạo hồ sơ Patient mẫu
     if (userData.role === UserRole.PATIENT) {
@@ -137,7 +150,7 @@ async function seed(): Promise<void> {
         isActive: true,
       });
       await patientRepo.save(patient);
-      console.log(`👤 Tạo hồ sơ bệnh nhân: ${userData.fullName}`);
+      logger.info(`👤 Tạo hồ sơ bệnh nhân: ${userData.fullName}`);
     }
   }
 
@@ -152,7 +165,7 @@ async function seed(): Promise<void> {
       const { email: _email, ...doctorData } = profile;
       doctor = doctorRepo.create({ ...doctorData, userId: user.id });
       await doctorRepo.save(doctor);
-      console.log(`🩺 Tạo hồ sơ bác sĩ: ${profile.email}`);
+      logger.info(`🩺 Tạo hồ sơ bác sĩ: ${profile.email}`);
     }
 
     // Tạo lịch làm việc mẫu cho 7 ngày tới
@@ -205,7 +218,8 @@ async function seed(): Promise<void> {
       price: 150000,
       unit: 'Lần',
       department: 'Phòng Xét nghiệm Huyết học',
-      description: 'Đánh giá số lượng hồng cầu, bạch cầu, tiểu cầu. Phát hiện thiếu máu, nhiễm trùng.',
+      description:
+        'Đánh giá số lượng hồng cầu, bạch cầu, tiểu cầu. Phát hiện thiếu máu, nhiễm trùng.',
     },
     {
       code: 'XN_SHM',
@@ -241,7 +255,8 @@ async function seed(): Promise<void> {
       price: 250000,
       unit: 'Lần',
       department: 'Phòng Siêu âm 201',
-      description: 'Khảo sát gan, mật, tụy, lách, thận, bàng quang. Cần nhịn tiểu để bàng quang căng.',
+      description:
+        'Khảo sát gan, mật, tụy, lách, thận, bàng quang. Cần nhịn tiểu để bàng quang căng.',
     },
     {
       code: 'SA_TIM',
@@ -313,7 +328,9 @@ async function seed(): Promise<void> {
     if (!existing) {
       const createdSvc = serviceRepo.create(svc);
       await serviceRepo.save(createdSvc);
-      console.log(`🔬 Thêm dịch vụ CLS: ${svc.code} - ${svc.name} (${svc.price.toLocaleString('vi-VN')} đ)`);
+      logger.info(
+        `🔬 Thêm dịch vụ CLS: ${svc.code} - ${svc.name} (${svc.price.toLocaleString('vi-VN')} đ)`,
+      );
     }
   }
 
@@ -415,22 +432,18 @@ async function seed(): Promise<void> {
     if (!existing) {
       const createdMed = medicineRepo.create(med);
       await medicineRepo.save(createdMed);
-      console.log(`💊 Thêm thuốc: ${med.code} - ${med.name} (${med.unitPrice.toLocaleString('vi-VN')} đ/${med.unit})`);
+      logger.info(
+        `💊 Thêm thuốc: ${med.code} - ${med.name} (${med.unitPrice.toLocaleString('vi-VN')} đ/${med.unit})`,
+      );
     }
   }
 
-  console.log('\n✨ Seed hoàn thành xuất sắc!');
-  console.log('\n📋 Danh sách tài khoản test (5 Roles):');
-  console.log('──────────────────────────────────────────────────────────────────');
-  seedUsers.forEach((u) =>
-    console.log(`  ${u.role.padEnd(14)} | ${u.email.padEnd(30)} | ${u.password}`),
-  );
-  console.log('──────────────────────────────────────────────────────────────────');
-
+  logger.info('\n✨ Seed hoàn thành xuất sắc!');
   await AppDataSource.destroy();
 }
 
-seed().catch((error) => {
-  console.error('❌ Seed thất bại:', error);
-  process.exit(1);
+void seed().catch(async () => {
+  logger.error('Seed failed; review database constraints and configuration');
+  if (AppDataSource.isInitialized) await AppDataSource.destroy();
+  process.exitCode = 1;
 });

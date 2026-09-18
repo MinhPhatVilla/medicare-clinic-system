@@ -3,7 +3,8 @@
  * @description Express Router cho module Bác sĩ khám bệnh & MedicalRecords (EMR)
  */
 
-import { Router } from 'express';
+import { recordAccess } from '../../middlewares/recordAccess.middleware';
+import { createRouter } from '../../utils/router';
 import { ExaminationsController } from './examinations.controller';
 import { authMiddleware } from '../../middlewares/auth.middleware';
 import { roleGuard } from '../../middlewares/roleGuard.middleware';
@@ -15,11 +16,14 @@ import {
 } from './examinations.dto';
 import { UserRole } from '../../models/User.entity';
 
-const router = Router();
+const router = createRouter();
 const controller = new ExaminationsController();
 
 // Tất cả endpoints cần đăng nhập
 router.use(authMiddleware);
+router.use(roleGuard(UserRole.DOCTOR, UserRole.ADMIN, UserRole.PATIENT));
+router.param('id', recordAccess('examination', 'id'));
+router.param('appointmentId', recordAccess('appointment', 'appointmentId'));
 
 // GET /examinations/queue - Lấy danh sách hàng đợi bệnh nhân đang chờ khám của bác sĩ (đặt trước /:id)
 router.get(
@@ -30,15 +34,11 @@ router.get(
 );
 
 // GET /examinations/appointment/:appointmentId - Kết quả khám theo lịch hẹn (đặt trước /:id)
-router.get('/appointment/:appointmentId', (req, res) =>
-  controller.findByAppointmentId(req, res),
-);
+router.get('/appointment/:appointmentId', (req, res) => controller.findByAppointmentId(req, res));
 
 // POST /examinations/:id/start - Bác sĩ bấm "Bắt đầu khám"
-router.post(
-  '/:id/start',
-  roleGuard(UserRole.DOCTOR, UserRole.ADMIN),
-  (req, res) => controller.startExamination(req, res),
+router.post('/:id/start', roleGuard(UserRole.DOCTOR, UserRole.ADMIN), (req, res) =>
+  controller.startExamination(req, res),
 );
 
 // PATCH /examinations/:id/draft - Cơ chế Lưu nháp tức thời (Auto-save draft)

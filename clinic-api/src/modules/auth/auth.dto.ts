@@ -7,9 +7,10 @@
  */
 
 import { z } from 'zod';
+import { dateOnly } from '../../utils/validation';
 
 // Regex kiểm tra số điện thoại Việt Nam chuẩn (10 chữ số)
-const VIETNAM_PHONE_REGEX = /^(0|\+84)(3[2-9]|5[6|8|9]|7[0|6-9]|8[1-9]|9[0-9])[0-9]{7}$/;
+const VIETNAM_PHONE_REGEX = /^(0|\+84)(3[2-9]|5[689]|7[06-9]|8[1-9]|9[0-9])[0-9]{7}$/;
 
 // Regex kiểm tra mật khẩu mạnh: ít nhất 1 chữ thường, 1 chữ hoa, 1 số
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/;
@@ -90,10 +91,7 @@ export const registerPatientSchema = z.object({
     .trim()
     .regex(VIETNAM_PHONE_REGEX, 'Số điện thoại Việt Nam không hợp lệ')
     .optional(),
-  dateOfBirth: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Ngày sinh phải có định dạng YYYY-MM-DD')
-    .optional(),
+  dateOfBirth: dateOnly.optional(),
   gender: z.enum(['MALE', 'FEMALE', 'OTHER']).optional(),
   address: z.string().trim().max(255, 'Địa chỉ tối đa 255 ký tự').optional(),
   bloodType: z.enum(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']).optional(),
@@ -115,7 +113,9 @@ export type RegisterPatientDto = z.infer<typeof registerPatientSchema>;
  * Schema đăng ký chung (backward compatibility)
  */
 export const registerSchema = registerPatientSchema.extend({
-  role: z.enum(['PATIENT', 'DOCTOR', 'RECEPTIONIST', 'CASHIER', 'ADMIN']).default('PATIENT'),
+  role: z
+    .enum(['PATIENT', 'DOCTOR', 'RECEPTIONIST', 'CASHIER', 'PHARMACIST', 'ADMIN', 'MANAGER'])
+    .default('PATIENT'),
 });
 
 export type RegisterDto = z.infer<typeof registerSchema>;
@@ -141,7 +141,7 @@ export type RegisterDto = z.infer<typeof registerSchema>;
  */
 export const loginSchema = z.object({
   email: z.string().trim().email('Email không đúng định dạng'),
-  password: z.string().min(1, 'Vui lòng nhập mật khẩu'),
+  password: z.string().min(1, 'Vui lòng nhập mật khẩu').max(72),
 });
 
 export type LoginDto = z.infer<typeof loginSchema>;
@@ -160,7 +160,7 @@ export type LoginDto = z.infer<typeof loginSchema>;
  *           example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
  */
 export const refreshTokenSchema = z.object({
-  refreshToken: z.string().min(1, 'Vui lòng cung cấp Refresh Token'),
+  refreshToken: z.string().min(1, 'Vui lòng cung cấp Refresh Token').max(4096),
 });
 
 export type RefreshTokenDto = z.infer<typeof refreshTokenSchema>;

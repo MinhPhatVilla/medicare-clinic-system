@@ -3,7 +3,7 @@
  * @description Express Router cho Doctors và Doctor Schedules module
  */
 
-import { Router } from 'express';
+import { createRouter } from '../../utils/router';
 import { DoctorsController } from './doctors.controller';
 import { authMiddleware } from '../../middlewares/auth.middleware';
 import { roleGuard } from '../../middlewares/roleGuard.middleware';
@@ -13,10 +13,11 @@ import {
   createDoctorScheduleSchema,
   bulkCreateDoctorScheduleSchema,
   availableSlotsQuerySchema,
+  doctorQuerySchema,
 } from './doctors.dto';
 import { UserRole } from '../../models/User.entity';
 
-const router = Router();
+const router = createRouter();
 const controller = new DoctorsController();
 
 // ============================================================
@@ -24,7 +25,7 @@ const controller = new DoctorsController();
 // ============================================================
 
 // GET /doctors - Danh sách bác sĩ
-router.get('/', (req, res) => controller.findAll(req, res));
+router.get('/', validate(doctorQuerySchema, 'query'), (req, res) => controller.findAll(req, res));
 
 // GET /doctors/:id/available-slots - Tra cứu các slot còn trống theo ngày/tuần
 router.get('/:id/available-slots', validate(availableSlotsQuerySchema, 'query'), (req, res) =>
@@ -32,10 +33,14 @@ router.get('/:id/available-slots', validate(availableSlotsQuerySchema, 'query'),
 );
 
 // GET /doctors/:id/schedule - Backward compatible
-router.get('/:id/schedule', (req, res) => controller.getDoctorSchedules(req, res));
+router.get('/:id/schedule', validate(availableSlotsQuerySchema, 'query'), (req, res) =>
+  controller.getDoctorSchedules(req, res),
+);
 
 // GET /doctors/:id/schedules - Lấy toàn bộ lịch của bác sĩ
-router.get('/:id/schedules', (req, res) => controller.getDoctorSchedules(req, res));
+router.get('/:id/schedules', validate(availableSlotsQuerySchema, 'query'), (req, res) =>
+  controller.getDoctorSchedules(req, res),
+);
 
 // GET /doctors/:id - Chi tiết thông tin bác sĩ
 router.get('/:id', (req, res) => controller.findById(req, res));

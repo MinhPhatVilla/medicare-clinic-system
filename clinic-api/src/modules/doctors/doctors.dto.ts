@@ -4,13 +4,18 @@
  */
 
 import { z } from 'zod';
+import { dateOnly } from '../../utils/validation';
 import { Specialty } from '../../models/Doctor.entity';
+import { listQuery } from '../../utils/validation';
+
+export const doctorQuerySchema = listQuery.extend({
+  specialty: z.nativeEnum(Specialty).optional(),
+});
 
 // Regex kiểm tra định dạng giờ HH:mm (24h)
 const TIME_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
 // Regex định dạng ngày YYYY-MM-DD
-const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
  * @swagger
@@ -101,7 +106,7 @@ export type UpdateDoctorProfileDto = z.infer<typeof updateDoctorProfileSchema>;
 export const createDoctorScheduleSchema = z
   .object({
     doctorId: z.string().uuid('ID bác sĩ phải là định dạng UUID'),
-    workDate: z.string().regex(DATE_REGEX, 'Ngày làm việc định dạng YYYY-MM-DD'),
+    workDate: dateOnly,
     startTime: z.string().regex(TIME_REGEX, 'Giờ bắt đầu định dạng HH:mm (VD 08:00)'),
     endTime: z.string().regex(TIME_REGEX, 'Giờ kết thúc định dạng HH:mm (VD 08:30)'),
     roomNumber: z.string().trim().max(50).optional(),
@@ -163,7 +168,7 @@ export type CreateDoctorScheduleDto = z.infer<typeof createDoctorScheduleSchema>
 export const bulkCreateDoctorScheduleSchema = z
   .object({
     doctorId: z.string().uuid('ID bác sĩ phải là định dạng UUID'),
-    workDate: z.string().regex(DATE_REGEX, 'Ngày làm việc định dạng YYYY-MM-DD'),
+    workDate: dateOnly,
     shiftStartTime: z.string().regex(TIME_REGEX, 'Giờ bắt đầu ca định dạng HH:mm'),
     shiftEndTime: z.string().regex(TIME_REGEX, 'Giờ kết thúc ca định dạng HH:mm'),
     slotDurationMinutes: z
@@ -192,9 +197,9 @@ export type BulkCreateDoctorScheduleDto = z.infer<typeof bulkCreateDoctorSchedul
  * Schema tra cứu slot còn trống
  */
 export const availableSlotsQuerySchema = z.object({
-  date: z.string().regex(DATE_REGEX, 'Ngày tra cứu định dạng YYYY-MM-DD').optional(),
-  from: z.string().regex(DATE_REGEX, 'Từ ngày định dạng YYYY-MM-DD').optional(),
-  to: z.string().regex(DATE_REGEX, 'Đến ngày định dạng YYYY-MM-DD').optional(),
+  date: dateOnly.optional(),
+  from: dateOnly.optional(),
+  to: dateOnly.optional(),
 });
 
 export type AvailableSlotsQueryDto = z.infer<typeof availableSlotsQuerySchema>;

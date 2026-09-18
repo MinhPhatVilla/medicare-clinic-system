@@ -11,6 +11,8 @@
  * - Tự động liên kết tài khoản Auth với hồ sơ Patient
  */
 
+import { EntityManager } from 'typeorm';
+import { randomBytes } from 'crypto';
 import { AppDataSource } from '../../config/database';
 import { Patient, Gender, BloodType } from '../../models/Patient.entity';
 import { User, UserRole } from '../../models/User.entity';
@@ -25,8 +27,9 @@ import type {
 } from './patients.dto';
 
 export class PatientsService {
-  private patientRepo = AppDataSource.getRepository(Patient);
-  private userRepo = AppDataSource.getRepository(User);
+  constructor(private manager: EntityManager = AppDataSource.manager) {}
+  private get patientRepo() { return this.manager.getRepository(Patient); }
+  private get userRepo() { return this.manager.getRepository(User); }
 
   /**
    * Tạo hồ sơ bệnh nhân mới
@@ -36,6 +39,9 @@ export class PatientsService {
    * - Tự động liên kết với tài khoản Auth nếu user đã tồn tại theo số điện thoại
    */
   async create(dto: CreatePatientDto, currentUser?: User): Promise<Patient> {
+    return this.manager.transaction(manager => new PatientsService(manager).saveNewPatient(dto, currentUser));
+  }
+  private async saveNewPatient(dto: CreatePatientDto, currentUser?: User): Promise<Patient> {
     const phone = normalizePhoneNumber(dto.phone);
 
     // 1. Kiểm tra trùng số điện thoại trong bảng patients
@@ -61,16 +67,7 @@ export class PatientsService {
     }
 
     // 3. Tự động kiểm tra liên kết với User Auth nếu có
-    let linkedUserId: string | null = null;
-    if (currentUser && currentUser.role === UserRole.PATIENT) {
-      linkedUserId = currentUser.id;
-    } else {
-      // Tiếp tân tạo: kiểm tra xem có tài khoản User nào trùng phone chưa
-      const existingUser = await this.userRepo.findOne({ where: { phone } });
-      if (existingUser && existingUser.role === UserRole.PATIENT) {
-        linkedUserId = existingUser.id;
-      }
-    }
+    const linkedUserId = currentUser?.role === UserRole.PATIENT ? currentUser.id : null;
 
     // 4. Sinh mã định danh bệnh nhân tự động (BN-YYYYMM-XXXX)
     const patientCode = await this.generateUniquePatientCode();
@@ -209,6 +206,12 @@ export class PatientsService {
    * - Bắt lỗi trùng số điện thoại hoặc CCCD nếu có sửa đổi
    */
   async update(id: string, dto: UpdatePatientDto, currentUser?: User): Promise<Patient> {
+    return this.manager.transaction(async manager => {
+      await manager.findOne(Patient, { where: { id }, lock: { mode: 'pessimistic_write' } });
+      return new PatientsService(manager).savePatient(id, dto, currentUser);
+    });
+  }
+  private async savePatient(id: string, dto: UpdatePatientDto, currentUser?: User): Promise<Patient> {
     const patient = await this.patientRepo.findOne({ where: { id, isActive: true } });
     if (!patient) {
       throw new NotFoundError('Hồ sơ bệnh nhân không tồn tại');
@@ -299,19 +302,6 @@ export class PatientsService {
    * Sinh mã định danh bệnh nhân tự động dạng BN-YYYYMM-XXXX
    */
   private async generateUniquePatientCode(): Promise<string> {
-    const date = new Date();
-    const yearMonth = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}`;
-
-    for (let attempts = 0; attempts < 10; attempts++) {
-      const randomNum = Math.floor(1000 + Math.random() * 9000);
-      const code = `BN-${yearMonth}-${randomNum}`;
-      const existing = await this.patientRepo.findOne({ where: { patientCode: code } });
-      if (!existing) {
-        return code;
-      }
-    }
-
-    // Fallback nếu trùng
-    return `BN-${yearMonth}-${Date.now().toString().slice(-4)}`;
+    return `BN-${randomBytes(8).toString('hex').toUpperCase()}`;
   }
 }

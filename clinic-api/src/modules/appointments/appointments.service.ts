@@ -18,6 +18,8 @@
  */
 
 import { In } from 'typeorm';
+import { randomBytes } from 'crypto';
+import { ReceptionService } from '../reception/reception.service';
 import { AppDataSource } from '../../config/database';
 import { Appointment, AppointmentStatus, AppointmentType } from '../../models/Appointment.entity';
 import { Patient } from '../../models/Patient.entity';
@@ -39,7 +41,6 @@ export class AppointmentsService {
   private appointmentRepo = AppDataSource.getRepository(Appointment);
   private patientRepo = AppDataSource.getRepository(Patient);
   private doctorRepo = AppDataSource.getRepository(Doctor);
-  private scheduleRepo = AppDataSource.getRepository(DoctorSchedule);
 
   /**
    * Helper: Lấy profile bệnh nhân từ user đang đăng nhập
@@ -74,16 +75,10 @@ export class AppointmentsService {
       const patient = await this.getPatientProfile(currentUser);
       patientId = patient.id;
     } else if (currentUser.role === UserRole.RECEPTIONIST || currentUser.role === UserRole.ADMIN) {
-      // Tiếp tân / Admin đặt lịch thay: Cần kiểm tra patientId nếu truyền hoặc fallback
-      const patient = await this.patientRepo.findOne({ where: { userId: currentUser.id } });
-      if (patient) {
-        patientId = patient.id;
-      } else {
-        // Lấy bệnh nhân đầu tiên hoặc yêu cầu truyền
-        const anyPatient = await this.patientRepo.findOne({ where: {} });
-        if (!anyPatient) throw new NotFoundError('Chưa có hồ sơ bệnh nhân nào trong hệ thống');
-        patientId = anyPatient.id;
-      }
+      if (!dto.patientId) throw new BadRequestError('Can chi dinh patientId khi dat lich tai quay');
+      const patient = await this.patientRepo.findOneBy({ id: dto.patientId, isActive: true });
+      if (!patient) throw new NotFoundError('Benh nhan');
+      patientId = patient.id;
     } else {
       throw new ForbiddenError('Chỉ bệnh nhân, tiếp tân hoặc admin mới có quyền đặt lịch');
     }
@@ -165,7 +160,7 @@ export class AppointmentsService {
 
       // 2.6. Tạo booking code: PKB-YYYYMMDD-XXXX
       const dateStr = String(schedule.workDate).replace(/-/g, '').slice(0, 8);
-      const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+      const random = randomBytes(8).toString('hex').toUpperCase();
       const bookingCode = `PKB-${dateStr}-${random}`;
 
       // 2.7. Tạo dữ liệu QR code cho check-in
@@ -189,7 +184,7 @@ export class AppointmentsService {
         chiefComplaint: dto.chiefComplaint,
         type: (dto.type as AppointmentType) || AppointmentType.ONLINE,
         status: (dto.status as AppointmentStatus) || AppointmentStatus.CONFIRMED,
-        priorityNumber: schedule.bookedPatients,
+
         qrCode,
       });
 
@@ -213,7 +208,7 @@ export class AppointmentsService {
       const appointment = await manager
         .getRepository(Appointment)
         .createQueryBuilder('appt')
-        .setLock('pessimistic_write')
+        .setLock('pessimistic_write', undefined, ['appt'])
         .leftJoinAndSelect('appt.patient', 'patient')
         .where('appt.id = :id', { id })
         .getOne();
@@ -276,7 +271,7 @@ export class AppointmentsService {
       const appointment = await manager
         .getRepository(Appointment)
         .createQueryBuilder('appt')
-        .setLock('pessimistic_write')
+        .setLock('pessimistic_write', undefined, ['appt'])
         .leftJoinAndSelect('appt.patient', 'patient')
         .where('appt.id = :id', { id })
         .getOne();
@@ -300,53 +295,48 @@ export class AppointmentsService {
         );
       }
 
-      // 2. Tìm và khóa khung giờ mới (newSchedule)
-      let newSchedule: DoctorSchedule | null = null;
-      if (dto.newScheduleId) {
-        newSchedule = await manager
-          .getRepository(DoctorSchedule)
-          .createQueryBuilder('schedule')
-          .setLock('pessimistic_write')
-          .where('schedule.id = :id', { id: dto.newScheduleId })
-          .getOne();
-      } else if (dto.newDate && dto.newTime) {
-        newSchedule = await manager
-          .getRepository(DoctorSchedule)
-          .createQueryBuilder('schedule')
-          .setLock('pessimistic_write')
-          .where('schedule.doctorId = :doctorId', { doctorId: appointment.doctorId })
-          .andWhere('schedule.workDate = :workDate', { workDate: dto.newDate })
-          .andWhere('schedule.startTime = :startTime', { startTime: dto.newTime })
-          .getOne();
-      }
-
-      if (!newSchedule) {
-        throw new NotFoundError('Không tìm thấy khung giờ mới để dời lịch');
-      }
-
-      if (appointment.scheduleId === newSchedule.id) {
-        throw new BadRequestError('Khung giờ mới trùng với khung giờ hiện tại');
-      }
-
+      const target = await manager.findOne(DoctorSchedule, {
+        where: dto.newScheduleId
+          ? { id: dto.newScheduleId }
+          : {
+              doctorId: appointment.doctorId,
+              workDate: dto.newDate as unknown as Date,
+              startTime: dto.newTime,
+            },
+      });
+      if (!target) throw new NotFoundError('Khung gio');
+      if (target.id === appointment.scheduleId)
+        throw new BadRequestError('Khung gio khong thay doi');
+      // Lock both slots in stable order, avoiding A->B / B->A rescheduling deadlocks.
+      const ids = [target.id, ...(appointment.scheduleId ? [appointment.scheduleId] : [])].sort();
+      const slots = await manager
+        .getRepository(DoctorSchedule)
+        .createQueryBuilder('s')
+        .where('s.id IN (:...ids)', { ids })
+        .orderBy('s.id')
+        .setLock('pessimistic_write')
+        .getMany();
+      const newSchedule = slots.find((slot) => slot.id === target.id)!;
       if (!newSchedule.isAvailable || newSchedule.bookedPatients >= newSchedule.maxPatients) {
-        throw new BadRequestError(
-          `Khung giờ mới đã đầy (${newSchedule.bookedPatients}/${newSchedule.maxPatients} bệnh nhân). Vui lòng chọn giờ khác.`,
-        );
+        throw new BadRequestError('Khung gio moi khong con cho');
       }
-
-      // 3. Giảm slot ở schedule cũ (nếu có)
-      if (appointment.scheduleId) {
-        const oldSchedule = await manager
-          .getRepository(DoctorSchedule)
-          .createQueryBuilder('schedule')
-          .setLock('pessimistic_write')
-          .where('schedule.id = :id', { id: appointment.scheduleId })
-          .getOne();
-
-        if (oldSchedule && oldSchedule.bookedPatients > 0) {
-          oldSchedule.bookedPatients -= 1;
-          await manager.getRepository(DoctorSchedule).save(oldSchedule);
-        }
+      const duplicate = await manager
+        .getRepository(Appointment)
+        .createQueryBuilder('a')
+        .where('a.patientId = :patientId AND a.scheduleId = :scheduleId AND a.id != :id', {
+          patientId: appointment.patientId,
+          scheduleId: newSchedule.id,
+          id: appointment.id,
+        })
+        .andWhere('a.status IN (:...statuses)', {
+          statuses: ['PENDING', 'CONFIRMED', 'CHECKED_IN', 'IN_PROGRESS'],
+        })
+        .getExists();
+      if (duplicate) throw new BadRequestError('Benh nhan da co lich tai khung gio moi');
+      const oldSchedule = slots.find((slot) => slot.id === appointment.scheduleId);
+      if (oldSchedule && oldSchedule.bookedPatients > 0) {
+        oldSchedule.bookedPatients -= 1;
+        await manager.save(oldSchedule);
       }
 
       // 4. Tăng slot ở schedule mới
@@ -358,7 +348,6 @@ export class AppointmentsService {
       appointment.doctorId = newSchedule.doctorId;
       appointment.appointmentDate = newSchedule.workDate;
       appointment.appointmentTime = newSchedule.startTime;
-      appointment.priorityNumber = newSchedule.bookedPatients;
 
       // Cập nhật lại QR code
       appointment.qrCode = JSON.stringify({
@@ -448,11 +437,11 @@ export class AppointmentsService {
 
     // Phân quyền dữ liệu
     if (currentUser.role === UserRole.PATIENT) {
-      const patient = await this.patientRepo.findOne({ where: { userId: currentUser.id } });
-      if (patient) qb.andWhere('appointment.patientId = :patientId', { patientId: patient.id });
+      const patient = await this.getPatientProfile(currentUser);
+      qb.andWhere('appointment.patientId = :scopePatientId', { scopePatientId: patient.id });
     } else if (currentUser.role === UserRole.DOCTOR) {
-      const doctor = await this.doctorRepo.findOne({ where: { userId: currentUser.id } });
-      if (doctor) qb.andWhere('appointment.doctorId = :doctorId', { doctorId: doctor.id });
+      const doctor = await this.getDoctorProfile(currentUser);
+      qb.andWhere('appointment.doctorId = :scopeDoctorId', { scopeDoctorId: doctor.id });
     }
 
     if (query.status) {
@@ -508,7 +497,7 @@ export class AppointmentsService {
       const appointment = await manager
         .getRepository(Appointment)
         .createQueryBuilder('appt')
-        .setLock('pessimistic_write')
+        .setLock('pessimistic_write', undefined, ['appt'])
         .where('appt.id = :id', { id })
         .getOne();
 
@@ -516,6 +505,15 @@ export class AppointmentsService {
         throw new NotFoundError('Lịch hẹn không tồn tại');
       }
 
+      const allowed: Partial<Record<AppointmentStatus, string[]>> = {
+        PENDING: ['CONFIRMED', 'CANCELLED', 'NO_SHOW'],
+        CONFIRMED: ['CANCELLED', 'NO_SHOW'],
+      };
+      if (!allowed[appointment.status]?.includes(dto.status)) {
+        throw new BadRequestError(
+          'Chuyen trang thai khong hop le. Check-in va kham qua API chuyen dung.',
+        );
+      }
       // Nếu chuyển sang CANCELLED hoặc NO_SHOW từ PENDING/CONFIRMED: giải phóng slot
       const isReleasingSlot =
         ['CANCELLED', 'NO_SHOW'].includes(dto.status) &&
@@ -561,28 +559,7 @@ export class AppointmentsService {
   /**
    * Check-in bằng QR code (Tiếp tân quét mã)
    */
-  async checkInByQR(bookingCode: string): Promise<Appointment> {
-    const appointment = await this.appointmentRepo.findOne({
-      where: { bookingCode },
-      relations: ['patient', 'patient.user', 'doctor', 'doctor.user', 'schedule'],
-    });
-
-    if (!appointment) {
-      throw new NotFoundError(`Không tìm thấy lịch hẹn với mã: ${bookingCode}`);
-    }
-
-    if (
-      appointment.status !== AppointmentStatus.CONFIRMED &&
-      appointment.status !== AppointmentStatus.PENDING
-    ) {
-      throw new BadRequestError(
-        `Không thể check-in: Lịch hẹn đang ở trạng thái "${appointment.status}"`,
-      );
-    }
-
-    appointment.status = AppointmentStatus.CHECKED_IN;
-    appointment.checkInTime = new Date();
-
-    return this.appointmentRepo.save(appointment);
+  async checkInByQR(bookingCode: string, currentUser: User): Promise<Appointment> {
+    return (await new ReceptionService().checkIn({ bookingCode }, currentUser)).appointment;
   }
 }

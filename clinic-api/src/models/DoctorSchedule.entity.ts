@@ -41,6 +41,11 @@ export enum DayOfWeek {
 @Index('idx_schedule_doctor_date', ['doctorId', 'workDate'])
 @Index('idx_schedule_room_date', ['roomNumber', 'workDate'])
 @Check('chk_schedule_patients', '"booked_patients" <= "max_patients"')
+@Check(
+  'chk_schedule_capacity',
+  '"booked_patients" >= 0 AND "max_patients" > 0 AND "slot_duration_minutes" > 0',
+)
+@Check('chk_schedule_time', '"start_time" < "end_time"')
 @Entity('doctor_schedules')
 export class DoctorSchedule {
   @PrimaryGeneratedColumn('uuid')

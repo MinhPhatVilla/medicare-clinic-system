@@ -10,6 +10,7 @@
 
 import { DataSource } from 'typeorm';
 import { env } from './env';
+import { logger } from '../utils/logger';
 
 export const AppDataSource = new DataSource({
   type: 'postgres',
@@ -39,7 +40,8 @@ export const AppDataSource = new DataSource({
   migrations: [__dirname + '/../migrations/*{.ts,.js}'],
 
   // SSL: bật khi deploy lên cloud (Heroku, Railway, v.v.)
-  ssl: env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  ssl: env.DB_SSL ? { rejectUnauthorized: true } : false,
+  extra: { max: 10, statement_timeout: 30000, options: '-c timezone=Asia/Ho_Chi_Minh' },
 });
 
 /**
@@ -47,11 +49,6 @@ export const AppDataSource = new DataSource({
  * Được gọi trong app.ts khi server khởi động
  */
 export const initializeDatabase = async (): Promise<void> => {
-  try {
-    await AppDataSource.initialize();
-    console.info(`✅ Kết nối PostgreSQL thành công — Database: ${env.DB_NAME}`);
-  } catch (error) {
-    console.error('❌ Không thể kết nối PostgreSQL:', error);
-    process.exit(1);
-  }
+  await AppDataSource.initialize();
+  logger.info('PostgreSQL connected');
 };

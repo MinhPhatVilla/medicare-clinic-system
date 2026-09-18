@@ -122,11 +122,7 @@ export class ServiceOrdersController {
   enterResult = async (req: Request, res: Response) => {
     const { id } = req.params;
     const technicianUserId = req.user?.id;
-    const result = await this.serviceOrdersService.enterResult(
-      id,
-      req.body,
-      technicianUserId,
-    );
+    const result = await this.serviceOrdersService.enterResult(id, req.body, technicianUserId);
     ApiResponse.success(
       res,
       result,

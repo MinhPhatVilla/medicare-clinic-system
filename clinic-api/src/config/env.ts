@@ -12,21 +12,33 @@ import dotenv from 'dotenv';
 
 // Load file .env vào process.env
 dotenv.config();
+// Legacy timestamp columns store clinic-local wall time.
+process.env.TZ = 'Asia/Ho_Chi_Minh';
 
 // Schema định nghĩa kiểu và giá trị mặc định cho từng biến môi trường
 const envSchema = z.object({
   // Server
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  PORT: z.coerce.number().default(3000),
+  PORT: z.coerce.number().int().min(1).max(65535).default(3000),
 
   // Database
   DB_HOST: z.string().default('localhost'),
-  DB_PORT: z.coerce.number().default(5432),
+  DB_PORT: z.coerce.number().int().min(1).max(65535).default(5432),
+  DB_SSL: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
   DB_USERNAME: z.string(),
   DB_PASSWORD: z.string(),
   DB_NAME: z.string(),
-  DB_SYNCHRONIZE: z.coerce.boolean().default(false),
-  DB_LOGGING: z.coerce.boolean().default(false),
+  DB_SYNCHRONIZE: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
+  DB_LOGGING: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
 
   // JWT
   JWT_SECRET: z.string().min(16, 'JWT_SECRET phải ít nhất 16 ký tự'),
@@ -38,7 +50,7 @@ const envSchema = z.object({
   CORS_ORIGIN: z.string().default('http://localhost:5500'),
 
   // Bcrypt
-  BCRYPT_ROUNDS: z.coerce.number().default(12),
+  BCRYPT_ROUNDS: z.coerce.number().int().min(10).max(14).default(12),
 
   // API
   API_PREFIX: z.string().default('/api/v1'),
@@ -53,5 +65,11 @@ if (!parseResult.success) {
   process.exit(1); // Dừng app ngay lập tức
 }
 
+if (parseResult.data.NODE_ENV === 'production' && parseResult.data.DB_SYNCHRONIZE) {
+  throw new Error('DB_SYNCHRONIZE must be false in production');
+}
+if (parseResult.data.JWT_SECRET === parseResult.data.JWT_REFRESH_SECRET) {
+  throw new Error('Access and refresh secrets must differ');
+}
 export const env = parseResult.data;
 export type Env = typeof env;

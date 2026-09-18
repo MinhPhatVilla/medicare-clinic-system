@@ -27,10 +27,12 @@ import {
   ManyToOne,
   JoinColumn,
   Index,
+  Check,
 } from 'typeorm';
 import { Appointment } from './Appointment.entity';
 import { Examination } from './Examination.entity';
 import { Patient } from './Patient.entity';
+import { User } from './User.entity';
 import { decimalTransformer } from '../utils/transformers';
 
 export enum InvoiceStatus {
@@ -45,12 +47,35 @@ export enum PaymentMethod {
   CASH = 'CASH',
   BANK_TRANSFER = 'BANK_TRANSFER',
   VIET_QR = 'VIET_QR',
+  POS_CARD = 'POS_CARD',
   MOMO = 'MOMO',
   ZALOPAY = 'ZALOPAY',
   INSURANCE = 'INSURANCE',
 }
 
+@Check(
+  'chk_invoice_amounts_non_negative',
+  '"consultation_fee" >= 0 AND "service_fee" >= 0 AND "medicine_fee" >= 0 AND "insurance_covered" >= 0 AND "discount_amount" >= 0 AND "total_amount" >= 0',
+)
+@Check(
+  'chk_invoice_deductions_not_exceed_subtotal',
+  '"insurance_covered" + "discount_amount" <= "consultation_fee" + "service_fee" + "medicine_fee"',
+)
+@Check('chk_invoice_prepaid_amount', '"prepaid_amount" >= 0 AND "prepaid_amount" <= "total_amount"')
+@Check(
+  'chk_invoice_discharge_requires_payment',
+  '"discharged_at" IS NULL OR ("status" = \'PAID\' AND "discharged_by_user_id" IS NOT NULL)',
+)
+@Check(
+  'chk_invoice_total_matches_components',
+  '"total_amount" = "consultation_fee" + "service_fee" + "medicine_fee" - "insurance_covered" - "discount_amount"',
+)
+@Check(
+  'chk_invoice_paid_requires_payment_metadata',
+  '"status" <> \'PAID\' OR ("payment_method" IS NOT NULL AND "paid_at" IS NOT NULL AND "paid_by_user_id" IS NOT NULL AND "transaction_code" IS NOT NULL)',
+)
 @Entity('invoices')
+@Index('idx_invoices_paid_at', ['paidAt'], { where: "status = 'PAID'" })
 export class Invoice {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -73,7 +98,7 @@ export class Invoice {
   @JoinColumn({ name: 'examination_id' })
   examination: Examination;
 
-  @Index('idx_invoice_examination_id')
+  @Index('idx_invoice_examination_id', { unique: true })
   @Column({ name: 'examination_id', nullable: true })
   examinationId: string;
 
@@ -147,6 +172,16 @@ export class Invoice {
   })
   totalAmount: number; // Tổng tiền bệnh nhân phải trả
 
+  @Column({
+    name: 'prepaid_amount',
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    default: 0,
+    transformer: decimalTransformer,
+  })
+  prepaidAmount: number; // Tiền CLS đã thu trước, trừ khi quyết toán cuối ca khám
+
   // ---- Thanh toán ----
   @Index('idx_invoice_status')
   @Column({ type: 'enum', enum: InvoiceStatus, default: InvoiceStatus.PENDING })
@@ -160,11 +195,32 @@ export class Invoice {
   })
   paymentMethod: PaymentMethod;
 
+  @Index('idx_invoice_transaction_code', { unique: true })
+  @Column({ name: 'transaction_code', unique: true, length: 40, nullable: true })
+  transactionCode: string;
+
+  @Column({ name: 'payment_reference', length: 100, nullable: true })
+  paymentReference: string; // Mã tham chiếu từ QR/POS/ngân hàng nếu có
+
   @Column({ name: 'paid_at', type: 'timestamp', nullable: true })
   paidAt: Date;
 
   @Column({ name: 'paid_by_user_id', nullable: true })
   paidByUserId: string; // ID nhân viên thu ngân/tiếp tân xác nhận thu tiền
+
+  @ManyToOne(() => User, { nullable: true, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'paid_by_user_id' })
+  paidBy: User;
+
+  @Column({ name: 'discharged_at', type: 'timestamp', nullable: true })
+  dischargedAt: Date;
+
+  @Column({ name: 'discharged_by_user_id', type: 'uuid', nullable: true })
+  dischargedByUserId: string;
+
+  @ManyToOne(() => User, { nullable: true, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'discharged_by_user_id' })
+  dischargedBy: User;
 
   @Column({ name: 'notes', type: 'text', nullable: true })
   notes: string;

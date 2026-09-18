@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import { dateOnly } from '../../utils/validation';
 import { ServiceType, ServiceOrderStatus } from '../../models/ServiceOrder.entity';
 
 /**
@@ -50,8 +51,7 @@ export const updateServiceOrderStatusSchema = z
   .object({
     status: z.nativeEnum(ServiceOrderStatus, {
       errorMap: () => ({
-        message:
-          'Trạng thái chỉ định phải là ORDERED, PAID, IN_PROGRESS, COMPLETED hoặc CANCELLED',
+        message: 'Trạng thái chỉ định phải là ORDERED, PAID, IN_PROGRESS, COMPLETED hoặc CANCELLED',
       }),
     }),
     result: z.string().trim().optional(),
@@ -142,19 +142,10 @@ export type EnterServiceOrderResultDto = z.infer<typeof enterServiceOrderResultS
 export const technicianQueueQuerySchema = z.object({
   serviceType: z.nativeEnum(ServiceType).optional(),
   status: z.nativeEnum(ServiceOrderStatus).optional(),
-  date: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Định dạng ngày phải là YYYY-MM-DD')
-    .optional(),
-  search: z.string().trim().optional(),
-  page: z
-    .string()
-    .optional()
-    .transform((v) => (v ? Math.max(1, parseInt(v, 10)) : 1)),
-  limit: z
-    .string()
-    .optional()
-    .transform((v) => (v ? Math.min(100, Math.max(1, parseInt(v, 10))) : 50)),
+  date: dateOnly.optional(),
+  search: z.string().trim().max(200).optional(),
+  page: z.coerce.number().int().min(1).max(100000).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
 });
 
 export type TechnicianQueueQueryDto = z.infer<typeof technicianQueueQuerySchema>;
@@ -163,20 +154,14 @@ export type TechnicianQueueQueryDto = z.infer<typeof technicianQueueQuerySchema>
  * Schema tra cứu danh mục dịch vụ kỹ thuật (Service Catalog)
  */
 export const serviceCatalogQuerySchema = z.object({
-  search: z.string().trim().optional(),
+  search: z.string().trim().max(200).optional(),
   serviceType: z.nativeEnum(ServiceType).optional(),
   isActive: z
-    .string()
+    .enum(['true', 'false'])
     .optional()
     .transform((val) => (val === undefined ? undefined : val === 'true')),
-  page: z
-    .string()
-    .optional()
-    .transform((v) => (v ? Math.max(1, parseInt(v, 10)) : 1)),
-  limit: z
-    .string()
-    .optional()
-    .transform((v) => (v ? Math.min(100, Math.max(1, parseInt(v, 10))) : 50)),
+  page: z.coerce.number().int().min(1).max(100000).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
 });
 
 export type ServiceCatalogQueryDto = z.infer<typeof serviceCatalogQuerySchema>;
@@ -205,4 +190,3 @@ export const createMedicalServiceSchema = z.object({
 });
 
 export type CreateMedicalServiceDto = z.infer<typeof createMedicalServiceSchema>;
-

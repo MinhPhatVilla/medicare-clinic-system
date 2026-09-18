@@ -12,8 +12,9 @@ import { ValueTransformer } from 'typeorm';
  * và giữ nguyên giá trị number/null khi ghi vào DB.
  */
 export const decimalTransformer: ValueTransformer = {
-  to: (value?: number | null): number | null => {
-    if (value === undefined || value === null) return null;
+  to: (value?: number | null): number | null | undefined => {
+    // Preserve undefined so TypeORM can apply the database column default.
+    if (value === undefined || value === null) return value;
     return Number(value);
   },
   from: (value?: string | number | null): number => {

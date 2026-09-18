@@ -10,6 +10,7 @@
  * - Tra cứu các slot còn trống của từng bác sĩ theo ngày hoặc theo tuần
  */
 
+import { EntityManager } from 'typeorm';
 import { AppDataSource } from '../../config/database';
 import { Doctor } from '../../models/Doctor.entity';
 import { DoctorSchedule, DayOfWeek } from '../../models/DoctorSchedule.entity';
@@ -29,8 +30,9 @@ import type {
 } from './doctors.dto';
 
 export class DoctorsService {
-  private doctorRepo = AppDataSource.getRepository(Doctor);
-  private scheduleRepo = AppDataSource.getRepository(DoctorSchedule);
+  constructor(private manager: EntityManager = AppDataSource.manager) {}
+  private get doctorRepo() { return this.manager.getRepository(Doctor); }
+  private get scheduleRepo() { return this.manager.getRepository(DoctorSchedule); }
 
   // ============================================================
   // 1. QUẢN LÝ THÔNG TIN BÁC SĨ
@@ -106,6 +108,13 @@ export class DoctorsService {
    * - Kiểm tra trùng khung giờ cho cùng phòng khám
    */
   async createSchedule(dto: CreateDoctorScheduleDto, currentUser?: User): Promise<DoctorSchedule> {
+    return this.manager.transaction(async manager => {
+      await manager.query('SELECT pg_advisory_xact_lock(71001, hashtext($1))', [dto.workDate]);
+      return new DoctorsService(manager).saveSchedule(dto, currentUser);
+    });
+  }
+
+  private async saveSchedule(dto: CreateDoctorScheduleDto, currentUser?: User): Promise<DoctorSchedule> {
     const doctor = await this.doctorRepo.findOne({ where: { id: dto.doctorId } });
     if (!doctor) {
       throw new NotFoundError('Bác sĩ không tồn tại');
@@ -136,6 +145,7 @@ export class DoctorsService {
       endTime: dto.endTime,
       roomNumber,
       maxPatients: dto.maxPatients,
+      slotDurationMinutes: this.timeToMinutes(dto.endTime) - this.timeToMinutes(dto.startTime),
       bookedPatients: 0,
       isAvailable: true,
       notes: dto.notes,
@@ -148,76 +158,21 @@ export class DoctorsService {
    * Đăng ký ca làm việc lớn và tự động chia thành các slot nhỏ
    * Ví dụ ca 08:00 - 11:30 chia thành các slot 30 phút (08:00-08:30, 08:30-09:00,...)
    */
-  async bulkCreateSchedule(
-    dto: BulkCreateDoctorScheduleDto,
-    currentUser?: User,
-  ): Promise<DoctorSchedule[]> {
-    const doctor = await this.doctorRepo.findOne({ where: { id: dto.doctorId } });
-    if (!doctor) {
-      throw new NotFoundError('Bác sĩ không tồn tại');
-    }
-
-    if (currentUser && currentUser.role === UserRole.DOCTOR && doctor.userId !== currentUser.id) {
-      throw new ForbiddenError('Bác sĩ chỉ được đăng ký lịch làm việc cho chính mình');
-    }
-
-    const roomNumber = dto.roomNumber || doctor.roomNumber || 'Phòng khám đa khoa';
-    const slots = this.generateTimeSlots(
-      dto.shiftStartTime,
-      dto.shiftEndTime,
-      dto.slotDurationMinutes,
-    );
-
-    if (slots.length === 0) {
-      throw new BadRequestError('Không thể tạo slot nào từ khung giờ ca làm việc đã chọn');
-    }
-
-    // Kiểm tra trùng lặp cho từng slot
-    for (const slot of slots) {
-      await this.validateNoOverlap({
-        doctorId: dto.doctorId,
-        workDate: dto.workDate,
-        startTime: slot.startTime,
-        endTime: slot.endTime,
-        roomNumber,
-      });
-    }
-
-    const dayOfWeek = this.calculateDayOfWeek(dto.workDate);
-
-    // Lưu các slot trong transaction
-    const queryRunner = AppDataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-
-    try {
-      const createdSchedules: DoctorSchedule[] = [];
+  async bulkCreateSchedule(dto: BulkCreateDoctorScheduleDto, currentUser?: User): Promise<DoctorSchedule[]> {
+    const slots = this.generateTimeSlots(dto.shiftStartTime, dto.shiftEndTime, dto.slotDurationMinutes);
+    if (!slots.length) throw new BadRequestError('Ca lam viec ngan hon mot slot');
+    return this.manager.transaction(async manager => {
+      await manager.query('SELECT pg_advisory_xact_lock(71001, hashtext($1))', [dto.workDate]);
+      const service = new DoctorsService(manager);
+      const schedules = [];
       for (const slot of slots) {
-        const schedule = queryRunner.manager.create(DoctorSchedule, {
-          doctorId: dto.doctorId,
-          workDate: new Date(dto.workDate) as unknown as Date,
-          dayOfWeek,
-          startTime: slot.startTime,
-          endTime: slot.endTime,
-          roomNumber,
-          slotDurationMinutes: dto.slotDurationMinutes,
-          maxPatients: dto.maxPatientsPerSlot,
-          bookedPatients: 0,
-          isAvailable: true,
-          notes: dto.notes,
-        });
-        const saved = await queryRunner.manager.save(schedule);
-        createdSchedules.push(saved);
+        schedules.push(await service.saveSchedule({
+          doctorId: dto.doctorId, workDate: dto.workDate, ...slot, roomNumber: dto.roomNumber,
+          maxPatients: dto.maxPatientsPerSlot, notes: dto.notes,
+        }, currentUser));
       }
-
-      await queryRunner.commitTransaction();
-      return createdSchedules;
-    } catch (error) {
-      await queryRunner.rollbackTransaction();
-      throw error;
-    } finally {
-      await queryRunner.release();
-    }
+      return schedules;
+    });
   }
 
   /**
@@ -301,6 +256,13 @@ export class DoctorsService {
    * Hủy / Xóa slot làm việc
    */
   async deleteSchedule(scheduleId: string, currentUser?: User): Promise<void> {
+    await this.manager.transaction(async manager => {
+      await manager.findOne(DoctorSchedule, { where: { id: scheduleId }, lock: { mode: 'pessimistic_write' } });
+      await new DoctorsService(manager).removeSchedule(scheduleId, currentUser);
+    });
+  }
+
+  private async removeSchedule(scheduleId: string, currentUser?: User): Promise<void> {
     const schedule = await this.scheduleRepo.findOne({
       where: { id: scheduleId },
       relations: ['doctor'],
@@ -430,7 +392,7 @@ export class DoctorsService {
   }
 
   private calculateDayOfWeek(dateStr: string): DayOfWeek {
-    const day = new Date(dateStr).getDay();
+    const day = new Date(`${dateStr}T00:00:00Z`).getUTCDay();
     const map = [
       DayOfWeek.SUNDAY,
       DayOfWeek.MONDAY,

@@ -3,7 +3,8 @@
  * @description Router cấu hình endpoints cho Kê đơn thuốc, Tra cứu thuốc, ICD-10 & Hoàn tất khám
  */
 
-import { Router } from 'express';
+import { recordAccess } from '../../middlewares/recordAccess.middleware';
+import { createRouter } from '../../utils/router';
 import { PrescriptionsController } from './prescriptions.controller';
 import { authMiddleware } from '../../middlewares/auth.middleware';
 import { roleGuard } from '../../middlewares/roleGuard.middleware';
@@ -16,10 +17,11 @@ import {
   icd10QuerySchema,
 } from './prescriptions.dto';
 
-const router = Router();
+const router = createRouter();
 const controller = new PrescriptionsController();
 
 router.use(authMiddleware);
+router.param('examinationId', recordAccess('examination', 'examinationId'));
 
 // ============================================================
 // DANH MỤC THUỐC & ICD-10
@@ -52,6 +54,7 @@ router.post(
   '/',
   roleGuard(UserRole.DOCTOR, UserRole.ADMIN),
   validate(createPrescriptionSchema),
+  recordAccess('examination', 'examinationId', 'body'),
   controller.createPrescription,
 );
 

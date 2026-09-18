@@ -111,7 +111,7 @@ export class ReceptionService {
       const qb = manager
         .getRepository(Appointment)
         .createQueryBuilder('appt')
-        .setLock('pessimistic_write')
+        .setLock('pessimistic_write', undefined, ['appt'])
         .leftJoinAndSelect('appt.patient', 'patient')
         .leftJoinAndSelect('patient.user', 'patientUser')
         .leftJoinAndSelect('appt.doctor', 'doctor')
@@ -146,7 +146,7 @@ export class ReceptionService {
         };
       }
 
-      if (appointment.status === AppointmentStatus.CANCELLED) {
+      if (![AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED].includes(appointment.status)) {
         throw new BadRequestError('Lịch hẹn này đã bị hủy, không thể check-in');
       }
 
@@ -156,6 +156,10 @@ export class ReceptionService {
 
       // 3. Tự động tính Số Thứ Tự (STT / priorityNumber) trong ngày theo Bác sĩ
       // Query MAX(priorityNumber) của bác sĩ này trong ngày hôm đó
+      await manager.query('SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2))', [
+        appointment.doctorId,
+        String(appointment.appointmentDate),
+      ]);
       const maxSttRow = await manager
         .getRepository(Appointment)
         .createQueryBuilder('a')
@@ -273,6 +277,10 @@ export class ReceptionService {
       const currentTimeStr = this.getCurrentTimeString();
 
       // 3. Tính Số Thứ Tự (STT / priorityNumber) trong ngày theo Bác sĩ
+      await manager.query('SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2))', [
+        doctor.id,
+        todayStr,
+      ]);
       const maxSttRow = await manager
         .getRepository(Appointment)
         .createQueryBuilder('a')

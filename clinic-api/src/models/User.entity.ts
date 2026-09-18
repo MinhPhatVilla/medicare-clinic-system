@@ -30,7 +30,9 @@ export enum UserRole {
   DOCTOR = 'DOCTOR',
   RECEPTIONIST = 'RECEPTIONIST',
   CASHIER = 'CASHIER',
+  PHARMACIST = 'PHARMACIST',
   ADMIN = 'ADMIN',
+  MANAGER = 'MANAGER',
   TECHNICIAN = 'TECHNICIAN', // Kỹ thuật viên xét nghiệm / Chẩn đoán hình ảnh
 }
 
@@ -44,7 +46,7 @@ export class User {
   @Column({ unique: true, length: 100 })
   email: string;
 
-  @Column({ length: 255 })
+  @Column({ length: 255, select: false })
   password: string; // Lưu bcrypt hash, KHÔNG lưu plain text
 
   @Column({ type: 'enum', enum: UserRole })
@@ -60,7 +62,7 @@ export class User {
   @Column({ name: 'is_active', default: true })
   isActive: boolean;
 
-  @Column({ name: 'refresh_token', type: 'text', nullable: true })
+  @Column({ name: 'refresh_token', type: 'text', nullable: true, select: false })
   refreshToken: string | null; // Lưu hash của refresh token
 
   @CreateDateColumn({ name: 'created_at' })

@@ -43,6 +43,9 @@ export enum ExaminationStatus {
 }
 
 @Entity('examinations')
+@Index('idx_examinations_completed_at', ['completedAt', 'doctorId'], {
+  where: "status = 'COMPLETED'",
+})
 export class Examination {
   @PrimaryGeneratedColumn('uuid')
   id: string;

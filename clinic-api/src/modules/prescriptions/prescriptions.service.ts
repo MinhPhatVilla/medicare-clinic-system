@@ -3,9 +3,13 @@
  * @description Service xử lý Kê đơn thuốc, Danh mục thuốc, Tra cứu ICD-10 & Hoàn tất khóa bệnh án
  */
 
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { AppDataSource } from '../../config/database';
-import { Prescription } from '../../models/Prescription.entity';
+import {
+  Prescription,
+  PrescriptionDispensingStatus,
+  PrescriptionPaymentStatus,
+} from '../../models/Prescription.entity';
 import { PrescriptionDetail } from '../../models/PrescriptionDetail.entity';
 import { Medicine } from '../../models/Medicine.entity';
 import { Examination, ExaminationStatus } from '../../models/Examination.entity';
@@ -14,6 +18,7 @@ import { Invoice, InvoiceStatus } from '../../models/Invoice.entity';
 import { ServiceOrder, ServiceOrderStatus } from '../../models/ServiceOrder.entity';
 import { Doctor } from '../../models/Doctor.entity';
 import { NotFoundError, BadRequestError } from '../../exceptions/AppError';
+import { calculateInvoiceAmounts, lockBillingExamination } from '../invoices/invoice-integrity';
 import {
   CreatePrescriptionDto,
   CompleteAndLockDto,
@@ -23,7 +28,11 @@ import {
 
 // Danh mục mã bệnh ICD-10 phổ biến thường gặp tại phòng khám đa khoa
 const DEFAULT_ICD10_CATALOG = [
-  { code: 'K29.7', name: 'Viêm dạ dày, không đặc hiệu (Gastritis, unspecified)', group: 'Tiêu hóa' },
+  {
+    code: 'K29.7',
+    name: 'Viêm dạ dày, không đặc hiệu (Gastritis, unspecified)',
+    group: 'Tiêu hóa',
+  },
   { code: 'K21.9', name: 'Bệnh trào ngược dạ dày - thực quản (GERD)', group: 'Tiêu hóa' },
   { code: 'K25.9', name: 'Loét dạ dày không đặc hiệu', group: 'Tiêu hóa' },
   { code: 'K30', name: 'Chứng khó tiêu chức năng (Dyspepsia)', group: 'Tiêu hóa' },
@@ -60,15 +69,15 @@ export class PrescriptionsService {
   private serviceOrderRepo: Repository<ServiceOrder>;
   private doctorRepo: Repository<Doctor>;
 
-  constructor() {
-    this.prescriptionRepo = AppDataSource.getRepository(Prescription);
-    this.detailRepo = AppDataSource.getRepository(PrescriptionDetail);
-    this.medicineRepo = AppDataSource.getRepository(Medicine);
-    this.examRepo = AppDataSource.getRepository(Examination);
-    this.appointmentRepo = AppDataSource.getRepository(Appointment);
-    this.invoiceRepo = AppDataSource.getRepository(Invoice);
-    this.serviceOrderRepo = AppDataSource.getRepository(ServiceOrder);
-    this.doctorRepo = AppDataSource.getRepository(Doctor);
+  constructor(private manager: EntityManager = AppDataSource.manager) {
+    this.prescriptionRepo = manager.getRepository(Prescription);
+    this.detailRepo = manager.getRepository(PrescriptionDetail);
+    this.medicineRepo = manager.getRepository(Medicine);
+    this.examRepo = manager.getRepository(Examination);
+    this.appointmentRepo = manager.getRepository(Appointment);
+    this.invoiceRepo = manager.getRepository(Invoice);
+    this.serviceOrderRepo = manager.getRepository(ServiceOrder);
+    this.doctorRepo = manager.getRepository(Doctor);
   }
 
   // ============================================================
@@ -143,6 +152,13 @@ export class PrescriptionsService {
    * Bác sĩ kê đơn thuốc cho ca khám
    */
   async createPrescription(dto: CreatePrescriptionDto, _doctorUserId?: string) {
+    return this.manager.transaction(async (manager) => {
+      await lockBillingExamination(manager, dto.examinationId);
+      return new PrescriptionsService(manager).savePrescription(dto);
+    });
+  }
+
+  private async savePrescription(dto: CreatePrescriptionDto) {
     const examination = await this.examRepo.findOne({
       where: { id: dto.examinationId },
       relations: ['appointment', 'doctor', 'patient'],
@@ -153,9 +169,21 @@ export class PrescriptionsService {
     }
 
     // Kiểm tra khóa: Không cho sửa đổi tùy tiện nếu ca khám đã hoàn tất và bị khóa
-    if (examination.isLocked || examination.status === ExaminationStatus.COMPLETED) {
+    if (
+      examination.isLocked ||
+      ![ExaminationStatus.WAITING, ExaminationStatus.IN_PROGRESS].includes(examination.status)
+    ) {
       throw new BadRequestError(
         'Hồ sơ khám bệnh này đã hoàn tất và bị khóa. Không thể sửa đổi hoặc kê đơn thêm.',
+      );
+    }
+
+    const paidInvoice = await this.invoiceRepo.findOne({
+      where: { appointmentId: examination.appointmentId },
+    });
+    if (paidInvoice && paidInvoice.status !== InvoiceStatus.PENDING) {
+      throw new BadRequestError(
+        'Hóa đơn đã thanh toán. Không thể thay đổi đơn thuốc hoặc tiền thuốc.',
       );
     }
 
@@ -176,6 +204,8 @@ export class PrescriptionsService {
         dispensingNotes: dto.dispensingNotes,
         issuedAt: new Date(),
         totalMedicineFee: 0,
+        paymentStatus: PrescriptionPaymentStatus.PENDING_PAYMENT,
+        dispensingStatus: PrescriptionDispensingStatus.WAITING_PAYMENT,
       });
       prescription = await this.prescriptionRepo.save(prescription);
     } else {
@@ -184,8 +214,7 @@ export class PrescriptionsService {
         await this.detailRepo.remove(prescription.details);
       }
       prescription.dispensingNotes = dto.dispensingNotes || '';
-      prescription.diagnosisSummary =
-        dto.diagnosisSummary || examination.diagnosis || '';
+      prescription.diagnosisSummary = dto.diagnosisSummary || examination.diagnosis || '';
     }
 
     // Tạo các dòng thuốc chi tiết kèm liều dùng sáng - trưa - chiều - tối
@@ -195,8 +224,8 @@ export class PrescriptionsService {
     for (const med of dto.medicines) {
       const unitPrice = Number(med.unitPrice || 0);
       const quantity = Number(med.quantity || 1);
-      const totalPrice = unitPrice * quantity;
-      totalMedicineFee += totalPrice;
+      const totalPrice = (Math.round(unitPrice * 100) * quantity) / 100;
+      totalMedicineFee = (Math.round(totalMedicineFee * 100) + Math.round(totalPrice * 100)) / 100;
 
       // Xây dựng chuỗi tần suất nếu chưa có
       const frequencyStr =
@@ -230,6 +259,7 @@ export class PrescriptionsService {
     }
 
     const savedDetails = await this.detailRepo.save(detailEntities);
+    prescription.details = savedDetails;
     prescription.totalMedicineFee = totalMedicineFee;
     await this.prescriptionRepo.save(prescription);
 
@@ -276,8 +306,15 @@ export class PrescriptionsService {
   async completeAndLockExamination(
     examinationId: string,
     dto: CompleteAndLockDto,
-    doctorUserId?: string,
+    _doctorUserId?: string,
   ) {
+    return this.manager.transaction(async (manager) => {
+      await lockBillingExamination(manager, examinationId);
+      return new PrescriptionsService(manager).completeExamination(examinationId, dto);
+    });
+  }
+
+  private async completeExamination(examinationId: string, dto: CompleteAndLockDto) {
     const examination = await this.examRepo.findOne({
       where: { id: examinationId },
       relations: ['appointment', 'doctor'],
@@ -288,7 +325,10 @@ export class PrescriptionsService {
     }
 
     // Kiểm tra tính toàn vẹn: Chặn sửa đổi nếu hồ sơ đã bị khóa trước đó
-    if (examination.isLocked || examination.status === ExaminationStatus.COMPLETED) {
+    if (
+      examination.isLocked ||
+      ![ExaminationStatus.WAITING, ExaminationStatus.IN_PROGRESS].includes(examination.status)
+    ) {
       throw new BadRequestError(
         'Hồ sơ khám bệnh này đã hoàn tất và bị khóa chính thức. Không thể sửa đổi tùy tiện.',
       );
@@ -306,15 +346,12 @@ export class PrescriptionsService {
     // 2. Kê đơn thuốc nếu có kèm trong request
     let prescriptionResult = null;
     if (dto.prescription && dto.prescription.medicines.length > 0) {
-      prescriptionResult = await this.createPrescription(
-        {
-          examinationId: examination.id,
-          diagnosisSummary: dto.diagnosis,
-          dispensingNotes: dto.prescription.dispensingNotes,
-          medicines: dto.prescription.medicines,
-        },
-        doctorUserId,
-      );
+      prescriptionResult = await this.savePrescription({
+        examinationId: examination.id,
+        diagnosisSummary: dto.diagnosis,
+        dispensingNotes: dto.prescription.dispensingNotes,
+        medicines: dto.prescription.medicines,
+      });
     }
 
     // 3. Khóa hồ sơ bệnh án chính thức
@@ -353,19 +390,16 @@ export class PrescriptionsService {
    * Đồng bộ tiền thuốc vào hóa đơn tạm tính
    */
   private async syncInvoiceWithPrescription(appointmentId: string, medicineFee: number) {
-    let invoice = await this.invoiceRepo.findOne({ where: { appointmentId } });
+    const invoice = await this.invoiceRepo.findOne({ where: { appointmentId } });
     if (invoice) {
+      if (invoice.status !== InvoiceStatus.PENDING) {
+        throw new BadRequestError(
+          'Hóa đơn đã thanh toán. Không thể thay đổi đơn thuốc hoặc tiền thuốc.',
+        );
+      }
+
       invoice.medicineFee = medicineFee;
-      const subtotal =
-        Number(invoice.consultationFee || 0) +
-        Number(invoice.serviceFee || 0) +
-        medicineFee;
-      invoice.totalAmount = Math.max(
-        0,
-        subtotal -
-          Number(invoice.insuranceCovered || 0) -
-          Number(invoice.discountAmount || 0),
-      );
+      invoice.totalAmount = calculateInvoiceAmounts(invoice).totalAmount;
       await this.invoiceRepo.save(invoice);
     }
   }
@@ -380,11 +414,11 @@ export class PrescriptionsService {
 
     // 1. Phí khám từ Doctor
     let consultationFee = 200000;
-    if (examination.doctor?.consultationFee) {
+    if (examination.doctor?.consultationFee != null) {
       consultationFee = Number(examination.doctor.consultationFee);
     } else if (examination.doctorId) {
       const doc = await this.doctorRepo.findOne({ where: { id: examination.doctorId } });
-      if (doc?.consultationFee) consultationFee = Number(doc.consultationFee);
+      if (doc?.consultationFee != null) consultationFee = Number(doc.consultationFee);
     }
 
     // 2. Tổng phí CLS (chỉ tính các chỉ định không bị hủy)
@@ -426,17 +460,16 @@ export class PrescriptionsService {
         notes: 'Bảng kê viện phí chuyển từ Bác sĩ sau khi hoàn tất khám',
       });
     } else {
+      if (invoice.status !== InvoiceStatus.PENDING) {
+        throw new BadRequestError('Hóa đơn đã thanh toán nên không thể chốt lại chi phí khám.');
+      }
+
       invoice.examinationId = examination.id;
       if (examination.patientId) invoice.patientId = examination.patientId;
       invoice.consultationFee = consultationFee;
       invoice.serviceFee = serviceFee;
       invoice.medicineFee = medicineFee;
-      invoice.totalAmount = Math.max(
-        0,
-        totalSubtotal -
-          Number(invoice.insuranceCovered || 0) -
-          Number(invoice.discountAmount || 0),
-      );
+      invoice.totalAmount = calculateInvoiceAmounts(invoice).totalAmount;
       invoice.status = InvoiceStatus.PENDING;
     }
 

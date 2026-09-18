@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import { dateOnly } from '../../utils/validation';
 import { normalizePhoneNumber } from '../../utils/phone.util';
 
 // Regex CCCD (12 chữ số) hoặc CMND (9 chữ số)
@@ -72,10 +73,7 @@ export const createPatientSchema = z.object({
     .string({ required_error: 'Số điện thoại là bắt buộc' })
     .trim()
     .transform((val) => normalizePhoneNumber(val)),
-  dateOfBirth: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Ngày sinh phải theo định dạng YYYY-MM-DD')
-    .optional(),
+  dateOfBirth: dateOnly.optional(),
   gender: z.enum(['MALE', 'FEMALE', 'OTHER']).optional(),
   idCardNumber: z
     .string()
@@ -139,10 +137,7 @@ export const updatePatientSchema = z.object({
     .trim()
     .transform((val) => normalizePhoneNumber(val))
     .optional(),
-  dateOfBirth: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Ngày sinh phải theo định dạng YYYY-MM-DD')
-    .optional(),
+  dateOfBirth: dateOnly.optional(),
   gender: z.enum(['MALE', 'FEMALE', 'OTHER']).optional(),
   idCardNumber: z
     .string()
@@ -187,7 +182,7 @@ export type QuickLookupQueryDto = z.infer<typeof quickLookupQuerySchema>;
 export const patientQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(10),
-  search: z.string().trim().optional(),
+  search: z.string().trim().max(200).optional(),
   gender: z.enum(['MALE', 'FEMALE', 'OTHER']).optional(),
   bloodType: z.enum(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']).optional(),
 });

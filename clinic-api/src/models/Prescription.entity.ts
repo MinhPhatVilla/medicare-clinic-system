@@ -24,12 +24,46 @@ import {
   OneToMany,
   JoinColumn,
   Index,
+  ManyToOne,
+  Check,
 } from 'typeorm';
+import { Invoice } from './Invoice.entity';
+import { User } from './User.entity';
 import { Examination } from './Examination.entity';
 import { PrescriptionDetail } from './PrescriptionDetail.entity';
 import { decimalTransformer } from '../utils/transformers';
 
+export enum PrescriptionPaymentStatus {
+  PENDING_PAYMENT = 'PENDING_PAYMENT',
+  PAID = 'PAID',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum PrescriptionDispensingStatus {
+  WAITING_PAYMENT = 'WAITING_PAYMENT',
+  READY_TO_PREPARE = 'READY_TO_PREPARE',
+  PREPARING = 'PREPARING',
+  READY_TO_DISPENSE = 'READY_TO_DISPENSE',
+  DISPENSED = 'DISPENSED',
+  CANCELLED = 'CANCELLED',
+}
+
+@Check(
+  'chk_rx_paid_metadata',
+  '"payment_status" <> \'PAID\' OR ("paid_invoice_id" IS NOT NULL AND "payment_confirmed_at" IS NOT NULL AND "pharmacy_notified_at" IS NOT NULL)',
+)
+@Check(
+  'chk_rx_dispensing_requires_payment',
+  "\"dispensing_status\" IN ('WAITING_PAYMENT', 'CANCELLED') OR \"payment_status\" = 'PAID'",
+)
+@Check(
+  'chk_rx_dispensed_metadata',
+  '"dispensing_status" <> \'DISPENSED\' OR ("dispensed_at" IS NOT NULL AND "dispensed_by_user_id" IS NOT NULL)',
+)
 @Entity('prescriptions')
+@Index('idx_prescriptions_dispensed_at', ['dispensedAt'], {
+  where: "dispensing_status = 'DISPENSED' AND payment_status = 'PAID'",
+})
 export class Prescription {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -72,6 +106,48 @@ export class Prescription {
     transformer: decimalTransformer,
   })
   totalMedicineFee: number; // Tổng tiền thuốc (auto sum từ PrescriptionDetail)
+
+  @Index('idx_rx_payment_status')
+  @Column({
+    name: 'payment_status',
+    type: 'enum',
+    enum: PrescriptionPaymentStatus,
+    default: PrescriptionPaymentStatus.PENDING_PAYMENT,
+  })
+  paymentStatus: PrescriptionPaymentStatus;
+
+  @Index('idx_rx_dispensing_status')
+  @Column({
+    name: 'dispensing_status',
+    type: 'enum',
+    enum: PrescriptionDispensingStatus,
+    default: PrescriptionDispensingStatus.WAITING_PAYMENT,
+  })
+  dispensingStatus: PrescriptionDispensingStatus;
+
+  @Index('idx_rx_paid_invoice_id')
+  @Column({ name: 'paid_invoice_id', type: 'uuid', nullable: true })
+  paidInvoiceId: string;
+
+  @ManyToOne(() => Invoice, { nullable: true, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'paid_invoice_id' })
+  paidInvoice: Invoice;
+
+  @Column({ name: 'payment_confirmed_at', type: 'timestamp', nullable: true })
+  paymentConfirmedAt: Date;
+
+  @Column({ name: 'pharmacy_notified_at', type: 'timestamp', nullable: true })
+  pharmacyNotifiedAt: Date;
+
+  @Column({ name: 'dispensed_at', type: 'timestamp', nullable: true })
+  dispensedAt: Date;
+
+  @Column({ name: 'dispensed_by_user_id', type: 'uuid', nullable: true })
+  dispensedByUserId: string;
+
+  @ManyToOne(() => User, { nullable: true, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'dispensed_by_user_id' })
+  dispensedBy: User;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
