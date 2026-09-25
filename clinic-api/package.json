@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
+    "db:check": "npm run build && node scripts/check-database.cjs",
     "test:invoices": "npm run build && node --test tests/invoices.test.cjs",
     "start": "node dist/server.js",
     "lint": "eslint src --ext .ts",

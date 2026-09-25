@@ -9,6 +9,7 @@
  */
 
 import { DataSource } from 'typeorm';
+import { readFileSync } from 'node:fs';
 import { env } from './env';
 import { logger } from '../utils/logger';
 
@@ -40,8 +41,18 @@ export const AppDataSource = new DataSource({
   migrations: [__dirname + '/../migrations/*{.ts,.js}'],
 
   // SSL: bật khi deploy lên cloud (Heroku, Railway, v.v.)
-  ssl: env.DB_SSL ? { rejectUnauthorized: true } : false,
-  extra: { max: 10, statement_timeout: 30000, options: '-c timezone=Asia/Ho_Chi_Minh' },
+  ssl: env.DB_SSL
+    ? {
+        rejectUnauthorized: true,
+        ...(env.DB_SSL_CA_FILE ? { ca: readFileSync(env.DB_SSL_CA_FILE, 'utf8') } : {}),
+      }
+    : false,
+  extra: {
+    max: env.DB_POOL_MAX,
+    connectionTimeoutMillis: 10000,
+    statement_timeout: 30000,
+    options: '-c timezone=Asia/Ho_Chi_Minh',
+  },
 });
 
 /**

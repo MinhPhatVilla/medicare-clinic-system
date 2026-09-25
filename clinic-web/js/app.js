@@ -16,52 +16,334 @@ const MOCK_DATA = {
     { id: 8, name: 'Răng Hàm Mặt', icon: '🦷', count: 4 },
   ],
   doctors: [
-    { id: 1, name: 'TS.BS Trần Thị Minh', specialty: 1, title: 'Trưởng khoa Nội', exp: 15, avatar: 'TM' },
-    { id: 2, name: 'ThS.BS Nguyễn Văn Hùng', specialty: 1, title: 'Phó khoa Nội', exp: 10, avatar: 'VH' },
-    { id: 3, name: 'PGS.TS Lê Hoàng Nam', specialty: 3, title: 'Chuyên gia Cơ xương khớp', exp: 20, avatar: 'HN' },
-    { id: 4, name: 'BS.CKI Phạm Thu Hà', specialty: 2, title: 'Bác sĩ Nhi khoa', exp: 8, avatar: 'TH' },
-    { id: 5, name: 'TS.BS Vũ Đức Anh', specialty: 4, title: 'Chuyên gia Thần kinh', exp: 12, avatar: 'DA' },
-    { id: 6, name: 'BS.CKII Đỗ Minh Tuấn', specialty: 5, title: 'Bác sĩ Mắt', exp: 14, avatar: 'MT' },
+    {
+      id: 1,
+      name: 'TS.BS Trần Thị Minh',
+      specialty: 1,
+      title: 'Trưởng khoa Nội',
+      exp: 15,
+      avatar: 'TM',
+    },
+    {
+      id: 2,
+      name: 'ThS.BS Nguyễn Văn Hùng',
+      specialty: 1,
+      title: 'Phó khoa Nội',
+      exp: 10,
+      avatar: 'VH',
+    },
+    {
+      id: 3,
+      name: 'PGS.TS Lê Hoàng Nam',
+      specialty: 3,
+      title: 'Chuyên gia Cơ xương khớp',
+      exp: 20,
+      avatar: 'HN',
+    },
+    {
+      id: 4,
+      name: 'BS.CKI Phạm Thu Hà',
+      specialty: 2,
+      title: 'Bác sĩ Nhi khoa',
+      exp: 8,
+      avatar: 'TH',
+    },
+    {
+      id: 5,
+      name: 'TS.BS Vũ Đức Anh',
+      specialty: 4,
+      title: 'Chuyên gia Thần kinh',
+      exp: 12,
+      avatar: 'DA',
+    },
+    {
+      id: 6,
+      name: 'BS.CKII Đỗ Minh Tuấn',
+      specialty: 5,
+      title: 'Bác sĩ Mắt',
+      exp: 14,
+      avatar: 'MT',
+    },
   ],
   timeSlots: {
     morning: ['07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00'],
-    afternoon: ['13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30']
+    afternoon: ['13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30'],
   },
   patients: [
-    { id: 1, name: 'Nguyễn Văn An', dob: '1990-03-15', gender: 'Nam', phone: '0912345678', stt: 1, time: '08:00', reason: 'Đau bụng, ợ chua 3 ngày', status: 'waiting', allergy: 'Penicillin', history: 'Viêm dạ dày mãn' },
-    { id: 2, name: 'Trần Thị Bích', dob: '1985-07-22', gender: 'Nữ', phone: '0987654321', stt: 2, time: '08:30', reason: 'Đau đầu, chóng mặt', status: 'waiting', allergy: 'Không', history: 'Cao huyết áp' },
-    { id: 3, name: 'Lê Minh Cường', dob: '1978-11-05', gender: 'Nam', phone: '0909123456', stt: 3, time: '09:00', reason: 'Đau khớp gối 2 tuần', status: 'waiting', allergy: 'Aspirin', history: 'Thoái hóa khớp gối' },
-    { id: 4, name: 'Phạm Hồng Diệu', dob: '1995-01-18', gender: 'Nữ', phone: '0933456789', stt: 4, time: '09:30', reason: 'Ho kéo dài, sốt nhẹ', status: 'waiting', allergy: 'Không', history: 'Không' },
-    { id: 5, name: 'Hoàng Đức Phúc', dob: '2000-09-30', gender: 'Nam', phone: '0977888999', stt: 5, time: '10:00', reason: 'Kiểm tra sức khỏe tổng quát', status: 'waiting', allergy: 'Sulfa', history: 'Không' },
+    {
+      id: 1,
+      name: 'Nguyễn Văn An',
+      dob: '1990-03-15',
+      gender: 'Nam',
+      phone: '0912345678',
+      stt: 1,
+      time: '08:00',
+      reason: 'Đau bụng, ợ chua 3 ngày',
+      status: 'waiting',
+      allergy: 'Penicillin',
+      history: 'Viêm dạ dày mãn',
+    },
+    {
+      id: 2,
+      name: 'Trần Thị Bích',
+      dob: '1985-07-22',
+      gender: 'Nữ',
+      phone: '0987654321',
+      stt: 2,
+      time: '08:30',
+      reason: 'Đau đầu, chóng mặt',
+      status: 'waiting',
+      allergy: 'Không',
+      history: 'Cao huyết áp',
+    },
+    {
+      id: 3,
+      name: 'Lê Minh Cường',
+      dob: '1978-11-05',
+      gender: 'Nam',
+      phone: '0909123456',
+      stt: 3,
+      time: '09:00',
+      reason: 'Đau khớp gối 2 tuần',
+      status: 'waiting',
+      allergy: 'Aspirin',
+      history: 'Thoái hóa khớp gối',
+    },
+    {
+      id: 4,
+      name: 'Phạm Hồng Diệu',
+      dob: '1995-01-18',
+      gender: 'Nữ',
+      phone: '0933456789',
+      stt: 4,
+      time: '09:30',
+      reason: 'Ho kéo dài, sốt nhẹ',
+      status: 'waiting',
+      allergy: 'Không',
+      history: 'Không',
+    },
+    {
+      id: 5,
+      name: 'Hoàng Đức Phúc',
+      dob: '2000-09-30',
+      gender: 'Nam',
+      phone: '0977888999',
+      stt: 5,
+      time: '10:00',
+      reason: 'Kiểm tra sức khỏe tổng quát',
+      status: 'waiting',
+      allergy: 'Sulfa',
+      history: 'Không',
+    },
   ],
   services: [
-    { id: 1, code: 'XN_CBC', name: 'Tổng phân tích tế bào máu ngoại vi (CBC)', price: 150000, type: 'Xét nghiệm', dept: 'P.103 Xét nghiệm' },
-    { id: 2, code: 'XN_SHM', name: 'Sinh hóa máu cơ bản (Glucose, Men gan, Thận)', price: 220000, type: 'Xét nghiệm', dept: 'P.103 Xét nghiệm' },
-    { id: 3, code: 'SA_OB', name: 'Siêu âm ổ bụng tổng quát màu', price: 250000, type: 'Siêu âm', dept: 'P.201 Siêu âm' },
-    { id: 4, code: 'SA_TIM', name: 'Siêu âm tim Doppler màu thành ngực', price: 450000, type: 'Siêu âm', dept: 'P.202 Siêu âm Tim' },
-    { id: 5, code: 'XQ_NGUC', name: 'Chụp X-quang ngực thẳng kỹ thuật số (DR)', price: 180000, type: 'X-Quang', dept: 'P.105 X-quang' },
-    { id: 6, code: 'XQ_CS', name: 'Chụp X-quang cột sống thắt lưng thẳng/nghiêng', price: 240000, type: 'X-Quang', dept: 'P.105 X-quang' },
-    { id: 7, code: 'ECG_12', name: 'Điện tim 12 chuyển đạo (ECG)', price: 120000, type: 'Điện tim', dept: 'P.104 Thăm dò chức năng' },
-    { id: 8, code: 'NS_DD', name: 'Nội soi dạ dày - tá tràng gây mê', price: 1200000, type: 'Nội soi', dept: 'TT Nội soi tiêu hóa' },
-    { id: 9, code: 'NS_DT', name: 'Nội soi đại trực tràng toàn bộ gây mê', price: 1800000, type: 'Nội soi', dept: 'TT Nội soi tiêu hóa' },
+    {
+      id: 1,
+      code: 'XN_CBC',
+      name: 'Tổng phân tích tế bào máu ngoại vi (CBC)',
+      price: 150000,
+      type: 'Xét nghiệm',
+      dept: 'P.103 Xét nghiệm',
+    },
+    {
+      id: 2,
+      code: 'XN_SHM',
+      name: 'Sinh hóa máu cơ bản (Glucose, Men gan, Thận)',
+      price: 220000,
+      type: 'Xét nghiệm',
+      dept: 'P.103 Xét nghiệm',
+    },
+    {
+      id: 3,
+      code: 'SA_OB',
+      name: 'Siêu âm ổ bụng tổng quát màu',
+      price: 250000,
+      type: 'Siêu âm',
+      dept: 'P.201 Siêu âm',
+    },
+    {
+      id: 4,
+      code: 'SA_TIM',
+      name: 'Siêu âm tim Doppler màu thành ngực',
+      price: 450000,
+      type: 'Siêu âm',
+      dept: 'P.202 Siêu âm Tim',
+    },
+    {
+      id: 5,
+      code: 'XQ_NGUC',
+      name: 'Chụp X-quang ngực thẳng kỹ thuật số (DR)',
+      price: 180000,
+      type: 'X-Quang',
+      dept: 'P.105 X-quang',
+    },
+    {
+      id: 6,
+      code: 'XQ_CS',
+      name: 'Chụp X-quang cột sống thắt lưng thẳng/nghiêng',
+      price: 240000,
+      type: 'X-Quang',
+      dept: 'P.105 X-quang',
+    },
+    {
+      id: 7,
+      code: 'ECG_12',
+      name: 'Điện tim 12 chuyển đạo (ECG)',
+      price: 120000,
+      type: 'Điện tim',
+      dept: 'P.104 Thăm dò chức năng',
+    },
+    {
+      id: 8,
+      code: 'NS_DD',
+      name: 'Nội soi dạ dày - tá tràng gây mê',
+      price: 1200000,
+      type: 'Nội soi',
+      dept: 'TT Nội soi tiêu hóa',
+    },
+    {
+      id: 9,
+      code: 'NS_DT',
+      name: 'Nội soi đại trực tràng toàn bộ gây mê',
+      price: 1800000,
+      type: 'Nội soi',
+      dept: 'TT Nội soi tiêu hóa',
+    },
   ],
   medicines: [
-    { id: 1, code: 'TH_OMEP_20', name: 'Omeprazol 20mg', active: 'Omeprazole', unit: 'Viên', price: 2500, group: 'Tiêu hóa', usage: 'Uống trước bữa ăn sáng 30 phút' },
-    { id: 2, code: 'TH_DOMP_10', name: 'Domperidon 10mg', active: 'Domperidone', unit: 'Viên', price: 1500, group: 'Tiêu hóa', usage: 'Uống trước ăn 15 phút khi đầy bụng' },
-    { id: 3, code: 'TH_PARA_500', name: 'Paracetamol 500mg', active: 'Paracetamol', unit: 'Viên', price: 1000, group: 'Giảm đau hạ sốt', usage: 'Uống sau ăn khi đau hoặc sốt > 38.5°C' },
-    { id: 4, code: 'TH_AMOX_500', name: 'Amoxicillin 500mg', active: 'Amoxicillin', unit: 'Viên', price: 3000, group: 'Kháng sinh', usage: 'Uống sau ăn no, đủ liệu trình 7 ngày' },
-    { id: 5, code: 'TH_LOSA_50', name: 'Losartan 50mg', active: 'Losartan potassium', unit: 'Viên', price: 4000, group: 'Tim mạch', usage: 'Uống 1 viên vào buổi sáng mỗi ngày' },
-    { id: 6, code: 'TH_DICL_50', name: 'Diclofenac 50mg', active: 'Diclofenac sodium', unit: 'Viên', price: 2000, group: 'Kháng viêm', usage: 'Uống sau ăn no kèm nhiều nước' },
-    { id: 7, code: 'TH_CETI_10', name: 'Cetirizin 10mg', active: 'Cetirizine HCl', unit: 'Viên', price: 1800, group: 'Dị ứng', usage: 'Uống 1 viên buổi tối trước khi đi ngủ' },
-    { id: 8, code: 'TH_VITB_COMP', name: 'Vitamin B Complex', active: 'Vitamin B1, B6, B12', unit: 'Viên', price: 1200, group: 'Bổ thần kinh', usage: 'Uống sau bữa ăn sáng' },
+    {
+      id: 1,
+      code: 'TH_OMEP_20',
+      name: 'Omeprazol 20mg',
+      active: 'Omeprazole',
+      unit: 'Viên',
+      price: 2500,
+      group: 'Tiêu hóa',
+      usage: 'Uống trước bữa ăn sáng 30 phút',
+    },
+    {
+      id: 2,
+      code: 'TH_DOMP_10',
+      name: 'Domperidon 10mg',
+      active: 'Domperidone',
+      unit: 'Viên',
+      price: 1500,
+      group: 'Tiêu hóa',
+      usage: 'Uống trước ăn 15 phút khi đầy bụng',
+    },
+    {
+      id: 3,
+      code: 'TH_PARA_500',
+      name: 'Paracetamol 500mg',
+      active: 'Paracetamol',
+      unit: 'Viên',
+      price: 1000,
+      group: 'Giảm đau hạ sốt',
+      usage: 'Uống sau ăn khi đau hoặc sốt > 38.5°C',
+    },
+    {
+      id: 4,
+      code: 'TH_AMOX_500',
+      name: 'Amoxicillin 500mg',
+      active: 'Amoxicillin',
+      unit: 'Viên',
+      price: 3000,
+      group: 'Kháng sinh',
+      usage: 'Uống sau ăn no, đủ liệu trình 7 ngày',
+    },
+    {
+      id: 5,
+      code: 'TH_LOSA_50',
+      name: 'Losartan 50mg',
+      active: 'Losartan potassium',
+      unit: 'Viên',
+      price: 4000,
+      group: 'Tim mạch',
+      usage: 'Uống 1 viên vào buổi sáng mỗi ngày',
+    },
+    {
+      id: 6,
+      code: 'TH_DICL_50',
+      name: 'Diclofenac 50mg',
+      active: 'Diclofenac sodium',
+      unit: 'Viên',
+      price: 2000,
+      group: 'Kháng viêm',
+      usage: 'Uống sau ăn no kèm nhiều nước',
+    },
+    {
+      id: 7,
+      code: 'TH_CETI_10',
+      name: 'Cetirizin 10mg',
+      active: 'Cetirizine HCl',
+      unit: 'Viên',
+      price: 1800,
+      group: 'Dị ứng',
+      usage: 'Uống 1 viên buổi tối trước khi đi ngủ',
+    },
+    {
+      id: 8,
+      code: 'TH_VITB_COMP',
+      name: 'Vitamin B Complex',
+      active: 'Vitamin B1, B6, B12',
+      unit: 'Viên',
+      price: 1200,
+      group: 'Bổ thần kinh',
+      usage: 'Uống sau bữa ăn sáng',
+    },
   ],
   appointments: [
-    { id: 1, patient: 'Nguyễn Văn An', doctor: 'TS.BS Trần Thị Minh', specialty: 'Nội khoa', date: '2026-09-13', time: '08:00', status: 'confirmed', code: 'LH-20260913-001' },
-    { id: 2, patient: 'Trần Thị Bích', doctor: 'TS.BS Trần Thị Minh', specialty: 'Nội khoa', date: '2026-09-13', time: '08:30', status: 'confirmed', code: 'LH-20260913-002' },
-    { id: 3, patient: 'Lê Minh Cường', doctor: 'PGS.TS Lê Hoàng Nam', specialty: 'Cơ xương khớp', date: '2026-09-13', time: '09:00', status: 'checked-in', code: 'LH-20260913-003' },
-    { id: 4, patient: 'Phạm Hồng Diệu', doctor: 'TS.BS Trần Thị Minh', specialty: 'Nội khoa', date: '2026-09-14', time: '09:30', status: 'pending', code: 'LH-20260914-001' },
-    { id: 5, patient: 'Hoàng Đức Phúc', doctor: 'BS.CKI Phạm Thu Hà', specialty: 'Nhi khoa', date: '2026-09-15', time: '10:00', status: 'pending', code: 'LH-20260915-001' },
-  ]
+    {
+      id: 1,
+      patient: 'Nguyễn Văn An',
+      doctor: 'TS.BS Trần Thị Minh',
+      specialty: 'Nội khoa',
+      date: '2026-09-13',
+      time: '08:00',
+      status: 'confirmed',
+      code: 'LH-20260913-001',
+    },
+    {
+      id: 2,
+      patient: 'Trần Thị Bích',
+      doctor: 'TS.BS Trần Thị Minh',
+      specialty: 'Nội khoa',
+      date: '2026-09-13',
+      time: '08:30',
+      status: 'confirmed',
+      code: 'LH-20260913-002',
+    },
+    {
+      id: 3,
+      patient: 'Lê Minh Cường',
+      doctor: 'PGS.TS Lê Hoàng Nam',
+      specialty: 'Cơ xương khớp',
+      date: '2026-09-13',
+      time: '09:00',
+      status: 'checked-in',
+      code: 'LH-20260913-003',
+    },
+    {
+      id: 4,
+      patient: 'Phạm Hồng Diệu',
+      doctor: 'TS.BS Trần Thị Minh',
+      specialty: 'Nội khoa',
+      date: '2026-09-14',
+      time: '09:30',
+      status: 'pending',
+      code: 'LH-20260914-001',
+    },
+    {
+      id: 5,
+      patient: 'Hoàng Đức Phúc',
+      doctor: 'BS.CKI Phạm Thu Hà',
+      specialty: 'Nhi khoa',
+      date: '2026-09-15',
+      time: '10:00',
+      status: 'pending',
+      code: 'LH-20260915-001',
+    },
+  ],
 };
 
 // ─── Application State ───
@@ -75,17 +357,28 @@ const AppState = {
     doctor: null,
     date: null,
     time: null,
-    reason: ''
+    reason: '',
   },
   examination: {
     selectedPatient: null,
     prescriptions: [],
-    clsOrders: []
-  }
+    clsOrders: [],
+  },
 };
 
 // ─── Router ───
 function navigate(view, role = null) {
+  const section = view.split('-')[0];
+  if (['patient', 'doctor', 'receptionist', 'admin'].includes(section)) {
+    if (!AppState.currentUser) {
+      AppState.afterLogin = view;
+      view = 'login';
+      role = null;
+    } else if (section !== AppState.currentRole) {
+      showToast('Tài khoản không có quyền truy cập mục này.', 'warning');
+      return;
+    }
+  }
   if (role) AppState.currentRole = role;
   AppState.currentView = view;
   render();
@@ -209,7 +502,7 @@ function confirmBooking() {
     code: newCode,
     stt: newSTT,
     room: doc?.id === 3 ? 'Phòng 305' : 'Phòng 201',
-    reason: AppState.booking.reason || 'Khám tổng quát'
+    reason: AppState.booking.reason || 'Khám tổng quát',
   };
 
   // Thêm vào danh sách lịch hẹn thực tế của hệ thống
@@ -219,13 +512,22 @@ function confirmBooking() {
   // Chuyển sang bước 5 hiển thị phiếu khám
   AppState.booking.step = 5;
   render();
-  showToast(`🎉 Đặt lịch thành công! Số thứ tự của bạn là #${String(newSTT).padStart(2, '0')}`, 'success');
+  showToast(
+    `🎉 Đặt lịch thành công! Số thứ tự của bạn là #${String(newSTT).padStart(2, '0')}`,
+    'success',
+  );
 }
 
-function cancelPatientAppointment(id) {
+async function cancelPatientAppointment(id) {
   const apt = MOCK_DATA.appointments.find(a => a.id === id);
   if (apt) {
-    if (confirm(`Bạn có chắc chắn muốn hủy lịch hẹn [${apt.code}] khám với ${apt.doctor} không?`)) {
+    if (
+      await confirmAction(
+        'Hủy lịch hẹn?',
+        `Lịch hẹn ${apt.code} với ${apt.doctor} sẽ được hủy.`,
+        'Hủy lịch hẹn',
+      )
+    ) {
       apt.status = 'cancelled';
       render();
       showToast(`Đã hủy lịch hẹn ${apt.code}. Đã giải phóng slot khám.`, 'warning');
@@ -258,7 +560,10 @@ function calcChange() {
   const change = received - total;
   const el = document.getElementById('changeAmount');
   if (el) {
-    el.textContent = change >= 0 ? `${change.toLocaleString()} VNĐ` : `Còn thiếu: ${Math.abs(change).toLocaleString()} VNĐ`;
+    el.textContent =
+      change >= 0
+        ? `${change.toLocaleString()} VNĐ`
+        : `Còn thiếu: ${Math.abs(change).toLocaleString()} VNĐ`;
     el.style.color = change >= 0 ? 'var(--success)' : 'var(--danger)';
   }
 }
@@ -269,7 +574,15 @@ function showToast(message, type = 'info') {
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
   const symbol = document.createElement('span');
-  symbol.innerHTML = icon(type === 'success' ? 'circle-check' : type === 'error' ? 'circle-x' : type === 'warning' ? 'triangle-alert' : 'info');
+  symbol.innerHTML = icon(
+    type === 'success'
+      ? 'circle-check'
+      : type === 'error'
+        ? 'circle-x'
+        : type === 'warning'
+          ? 'triangle-alert'
+          : 'info',
+  );
   const text = document.createElement('span');
   text.textContent = message.replace(/[\p{Extended_Pictographic}\uFE0F\u200D]/gu, '').trim();
   toast.append(symbol, text);
@@ -302,26 +615,6 @@ function attachEventListeners() {
   enhancePresentation();
 }
 
-// ─── Login & Role Switching Logic ───
-function selectRole(role) {
-  AppState.loginRole = role;
-  render();
-}
-
-function handleLogin() {
-  const role = AppState.loginRole || 'patient';
-  const roleViews = {
-    patient: { view: 'patient-dashboard', name: 'Nguyễn Văn An' },
-    doctor: { view: 'doctor-dashboard', name: 'TS.BS Trần Thị Minh' },
-    receptionist: { view: 'receptionist-dashboard', name: 'Lễ Tân - Quầy 1' },
-    admin: { view: 'admin-dashboard', name: 'Quản trị viên' }
-  };
-  const target = roleViews[role];
-  AppState.currentRole = role;
-  navigate(target.view, role);
-  showToast(`Xin chào ${target.name}! Đăng nhập thành công.`, 'success');
-}
-
 // ─── Quick Booking Shortcuts ───
 function quickStartBooking() {
   AppState.booking = {
@@ -330,7 +623,7 @@ function quickStartBooking() {
     doctor: null,
     date: null,
     time: null,
-    reason: ''
+    reason: '',
   };
   navigate('patient-booking', 'patient');
 }
@@ -342,7 +635,7 @@ function quickBookSpecialty(specialtyId) {
     doctor: null,
     date: null,
     time: null,
-    reason: ''
+    reason: '',
   };
   navigate('patient-booking', 'patient');
   const specName = MOCK_DATA.specialties.find(s => s.id === specialtyId)?.name;
@@ -357,7 +650,7 @@ function quickBookDoctor(doctorId) {
     doctor: doctorId,
     date: new Date().toISOString().split('T')[0],
     time: null,
-    reason: ''
+    reason: '',
   };
   navigate('patient-booking', 'patient');
   showToast(`Đã chọn ${doc?.name}. Mời chọn ngày & khung giờ.`, 'info');
@@ -379,7 +672,7 @@ function handleQuickCheckIn() {
       return;
     }
     apt.status = 'checked-in';
-    
+
     // Thêm vào hàng đợi khám của Bác sĩ nếu chưa có
     if (!MOCK_DATA.patients.find(p => p.name === apt.patient)) {
       MOCK_DATA.patients.push({
@@ -393,12 +686,15 @@ function handleQuickCheckIn() {
         reason: apt.reason || 'Khám tổng quát',
         status: 'waiting',
         allergy: 'Không',
-        history: 'Bình thường'
+        history: 'Bình thường',
       });
     }
 
     render();
-    showToast(`🎯 Check-in thành công cho ${apt.patient} (${apt.code})! Đã chuyển vào hàng đợi phòng khám.`, 'success');
+    showToast(
+      `🎯 Check-in thành công cho ${apt.patient} (${apt.code})! Đã chuyển vào hàng đợi phòng khám.`,
+      'success',
+    );
   } else {
     showToast(`Không tìm thấy mã lịch hẹn [${query}]. Vui lòng kiểm tra lại!`, 'error');
   }
@@ -421,11 +717,14 @@ function checkInAppointmentById(id) {
         reason: apt.reason || 'Khám theo lịch hẹn',
         status: 'waiting',
         allergy: 'Không',
-        history: 'Bình thường'
+        history: 'Bình thường',
       });
     }
     render();
-    showToast(`Đã Check-in thành công cho ${apt.patient}! Số thứ tự #${String(apt.stt || id).padStart(2, '0')}`, 'success');
+    showToast(
+      `Đã Check-in thành công cho ${apt.patient}! Số thứ tự #${String(apt.stt || id).padStart(2, '0')}`,
+      'success',
+    );
   }
 }
 
@@ -447,20 +746,45 @@ function confirmBillingPayment() {
     const apt = MOCK_DATA.appointments.find(a => a.code === aptCode);
     if (apt) apt.status = 'completed';
   }
-  const clsTotal = (AppState.examination.clsOrders || []).reduce((sum, item) => sum + item.price, 0);
-  const medTotal = (AppState.examination.prescriptions || []).reduce((sum, item) => sum + item.price, 0);
+  const clsTotal = (AppState.examination.clsOrders || []).reduce(
+    (sum, item) => sum + item.price,
+    0,
+  );
+  const medTotal = (AppState.examination.prescriptions || []).reduce(
+    (sum, item) => sum + item.price,
+    0,
+  );
   const grandTotal = 200000 + clsTotal + medTotal;
-  showToast(`🎉 Thu ngân đã xác nhận thanh toán thành công ${grandTotal.toLocaleString()} VNĐ cho ${patient}! Trạng thái hóa đơn: PAID. Đang in biên lai...`, 'success');
+  showToast(
+    `🎉 Thu ngân đã xác nhận thanh toán thành công ${grandTotal.toLocaleString()} VNĐ cho ${patient}! Trạng thái hóa đơn: PAID. Đang in biên lai...`,
+    'success',
+  );
   setTimeout(() => {
     navigate('receptionist-dashboard', 'receptionist');
   }, 1200);
 }
 
-function openWalkInModal() {
-  const name = prompt('Nhập họ tên bệnh nhân vãng lai:', 'Vũ Quốc Toàn');
-  if (!name) return;
-  const phone = prompt('Nhập số điện thoại:', '0988112233');
-  const spec = prompt('Nhập chuyên khoa (1: Nội khoa, 2: Nhi, 3: Cơ xương khớp):', '1');
+async function openWalkInModal() {
+  const values = await requestForm({
+    title: 'Tiếp nhận bệnh nhân vãng lai',
+    confirmLabel: 'Tiếp nhận',
+    fields: [
+      { name: 'name', label: 'Họ và tên bệnh nhân', required: true, placeholder: 'Nhập họ và tên' },
+      { name: 'phone', label: 'Số điện thoại', type: 'tel', placeholder: 'Nhập số điện thoại' },
+      {
+        name: 'spec',
+        label: 'Chuyên khoa',
+        value: '1',
+        options: [
+          { value: '1', label: 'Nội khoa' },
+          { value: '2', label: 'Nhi khoa' },
+          { value: '3', label: 'Cơ xương khớp' },
+        ],
+      },
+    ],
+  });
+  if (!values) return;
+  const { name, phone, spec } = values;
 
   const nextId = MOCK_DATA.appointments.length + 1;
   const newApt = {
@@ -474,7 +798,7 @@ function openWalkInModal() {
     code: `VL-${Date.now().toString().slice(-4)}`,
     stt: nextId,
     room: 'Phòng 201',
-    reason: 'Khám vãng lai không đặt trước'
+    reason: 'Khám vãng lai không đặt trước',
   };
 
   MOCK_DATA.appointments.unshift(newApt);
@@ -489,11 +813,14 @@ function openWalkInModal() {
     reason: 'Khám vãng lai',
     status: 'waiting',
     allergy: 'Không',
-    history: 'Không'
+    history: 'Không',
   });
 
   render();
-  showToast(`Đã tiếp nhận bệnh nhân vãng lai: ${name} (STT #${String(nextId).padStart(2, '0')})`, 'success');
+  showToast(
+    `Đã tiếp nhận bệnh nhân vãng lai: ${name} (STT #${String(nextId).padStart(2, '0')})`,
+    'success',
+  );
 }
 
 function filterReceptionistApt(query) {
@@ -512,7 +839,10 @@ function callNextPatient() {
     const nextPatient = waiting[0];
     AppState.examination.selectedPatient = nextPatient.id;
     navigate('doctor-examination', 'doctor');
-    showToast(`📢 Đang gọi bệnh nhân: ${nextPatient.name} (STT #${String(nextPatient.stt || 1).padStart(2, '0')}) vào phòng 201`, 'info');
+    showToast(
+      `📢 Đang gọi bệnh nhân: ${nextPatient.name} (STT #${String(nextPatient.stt || 1).padStart(2, '0')}) vào phòng 201`,
+      'info',
+    );
   } else {
     showToast('Hiện tại không còn bệnh nhân nào đang chờ trong hàng đợi!', 'info');
   }
@@ -567,7 +897,7 @@ function handleAutoSaveDraft(patientId) {
       icd10: document.getElementById('examIcd10')?.value,
       notes: document.getElementById('examNotes')?.value,
       followUp: document.getElementById('examFollowUp')?.value,
-      savedAt: new Date().toLocaleTimeString('vi-VN')
+      savedAt: new Date().toLocaleTimeString('vi-VN'),
     };
 
     try {
@@ -609,16 +939,25 @@ function calculateBMI() {
   }
 }
 
-function openAddClsModal() {
+async function openAddClsModal() {
   const availableServices = MOCK_DATA.services;
-  const serviceListText = availableServices
-    .map((s, i) => `${i + 1}. [${s.code}] ${s.name} (${s.type}) - ${s.price.toLocaleString()} VNĐ [${s.dept}]`)
-    .join('\n');
-
-  const choice = prompt(
-    `DANH MỤC DỊCH VỤ KỸ THUẬT & BẢNG GIÁ NIÊM YẾT:\n\n${serviceListText}\n\nNhập số thứ tự dịch vụ muốn chỉ định (1-${availableServices.length}):`,
-    '1'
-  );
+  const values = await requestForm({
+    title: 'Thêm chỉ định cận lâm sàng',
+    confirmLabel: 'Thêm chỉ định',
+    fields: [
+      {
+        name: 'service',
+        label: 'Dịch vụ',
+        value: '1',
+        options: availableServices.map((s, i) => ({
+          value: i + 1,
+          label: `${s.name} · ${money(s.price)} · ${s.dept}`,
+        })),
+      },
+    ],
+  });
+  if (!values) return;
+  const choice = values.service;
 
   const index = parseInt(choice) - 1;
   if (index >= 0 && index < availableServices.length) {
@@ -630,10 +969,13 @@ function openAddClsModal() {
       price: selectedSvc.price,
       type: selectedSvc.type,
       status: 'ORDERED', // Mặc định là ORDERED (Đã chỉ định)
-      result: null
+      result: null,
     });
     render();
-    showToast(`Đã chỉ định: ${selectedSvc.name} (150,000 đ) • Đã đồng bộ vào viện phí tạm tính!`, 'success');
+    showToast(
+      `Đã chỉ định: ${selectedSvc.name} (150,000 đ) • Đã đồng bộ vào viện phí tạm tính!`,
+      'success',
+    );
   }
 }
 
@@ -642,20 +984,37 @@ function payClsOrder(index) {
   if (cls) {
     cls.status = 'PAID';
     render();
-    showToast(`💳 Đã xác nhận thu tiền cho dịch vụ: ${cls.name}! Trạng thái chuyển sang PAID.`, 'success');
+    showToast(
+      `💳 Đã xác nhận thu tiền cho dịch vụ: ${cls.name}! Trạng thái chuyển sang PAID.`,
+      'success',
+    );
   }
 }
 
-function enterClsResult(index) {
+async function enterClsResult(index) {
   const cls = AppState.examination.clsOrders[index];
   if (cls) {
-    const defaultConclusion = cls.type === 'Xét nghiệm'
-      ? 'Tăng nhẹ bạch cầu đa nhân trung tính nghi ngờ nhiễm trùng cấp'
-      : cls.type === 'Siêu âm'
-      ? 'Hình thái gan mật tụy lách 2 thận bình thường, không có dịch tự do'
-      : 'Hình ảnh tim phổi trong giới hạn bình thường';
+    const defaultConclusion =
+      cls.type === 'Xét nghiệm'
+        ? 'Tăng nhẹ bạch cầu đa nhân trung tính nghi ngờ nhiễm trùng cấp'
+        : cls.type === 'Siêu âm'
+          ? 'Hình thái gan mật tụy lách 2 thận bình thường, không có dịch tự do'
+          : 'Hình ảnh tim phổi trong giới hạn bình thường';
 
-    const conclusion = prompt(`[KỸ THUẬT VIÊN] Nhập mô tả chi tiết & kết luận cho [${cls.name}]:`, cls.conclusion || defaultConclusion);
+    const values = await requestForm({
+      title: 'Kết quả cận lâm sàng',
+      description: cls.name,
+      confirmLabel: 'Lưu kết quả',
+      fields: [
+        {
+          name: 'conclusion',
+          label: 'Mô tả & kết luận',
+          type: 'textarea',
+          value: cls.conclusion || defaultConclusion,
+        },
+      ],
+    });
+    const conclusion = values ? values.conclusion : null;
     if (conclusion !== null) {
       cls.conclusion = conclusion;
       cls.status = 'COMPLETED';
@@ -664,32 +1023,73 @@ function enterClsResult(index) {
       if (!cls.indicators || cls.indicators.length === 0) {
         if (cls.type === 'Xét nghiệm') {
           cls.indicators = [
-            { name: 'Số lượng Hồng cầu (RBC)', value: '4.8', unit: 'T/L', normalRange: '4.0 - 5.5', isAbnormal: false },
-            { name: 'Số lượng Bạch cầu (WBC)', value: '11.8', unit: 'G/L', normalRange: '4.0 - 10.0', isAbnormal: true },
-            { name: 'Huyết sắc tố (Hb)', value: '140', unit: 'g/L', normalRange: '120 - 165', isAbnormal: false }
+            {
+              name: 'Số lượng Hồng cầu (RBC)',
+              value: '4.8',
+              unit: 'T/L',
+              normalRange: '4.0 - 5.5',
+              isAbnormal: false,
+            },
+            {
+              name: 'Số lượng Bạch cầu (WBC)',
+              value: '11.8',
+              unit: 'G/L',
+              normalRange: '4.0 - 10.0',
+              isAbnormal: true,
+            },
+            {
+              name: 'Huyết sắc tố (Hb)',
+              value: '140',
+              unit: 'g/L',
+              normalRange: '120 - 165',
+              isAbnormal: false,
+            },
           ];
         } else {
           cls.indicators = [
-            { name: 'Cấu trúc hình thái giải phẫu', value: 'Bình thường', unit: '', normalRange: 'Bình thường', isAbnormal: false },
-            { name: 'Tổn thương khu trú / Dịch', value: 'Không phát hiện', unit: '', normalRange: 'Âm tính', isAbnormal: false }
+            {
+              name: 'Cấu trúc hình thái giải phẫu',
+              value: 'Bình thường',
+              unit: '',
+              normalRange: 'Bình thường',
+              isAbnormal: false,
+            },
+            {
+              name: 'Tổn thương khu trú / Dịch',
+              value: 'Không phát hiện',
+              unit: '',
+              normalRange: 'Âm tính',
+              isAbnormal: false,
+            },
           ];
         }
       }
 
       if (!cls.attachments || cls.attachments.length === 0) {
-        cls.attachments = ['https://images.unsplash.com/photo-1579154204601-01588f351e67?w=600&auto=format&fit=crop&q=60'];
+        cls.attachments = [
+          'https://images.unsplash.com/photo-1579154204601-01588f351e67?w=600&auto=format&fit=crop&q=60',
+        ];
       }
 
       render();
-      showToast(`✅ Kỹ thuật viên đã cập nhật kết quả CLS thành công! Bác sĩ có thể xem ngay trên màn hình.`, 'success');
+      showToast(
+        `✅ Kỹ thuật viên đã cập nhật kết quả CLS thành công! Bác sĩ có thể xem ngay trên màn hình.`,
+        'success',
+      );
     }
   }
 }
 
-function removeClsOrder(index) {
+async function removeClsOrder(index) {
   const cls = AppState.examination.clsOrders[index];
   if (cls && cls.status === 'PAID') {
-    if (!confirm('Dịch vụ này đã thu tiền. Bạn có chắc chắn muốn hủy và hoàn tiền tạm tính?')) {
+    if (
+      !(await confirmAction(
+        'Hủy chỉ định đã thu tiền?',
+        'Dịch vụ này đã thu tiền. Chi phí tạm tính sẽ được cập nhật sau khi hủy.',
+        'Hủy chỉ định',
+      ))
+    ) {
       return;
     }
   }
@@ -698,35 +1098,70 @@ function removeClsOrder(index) {
   showToast(`Đã xóa chỉ định: ${removed[0]?.name}. Đã cập nhật lại viện phí tạm tính.`, 'warning');
 }
 
-function openAddMedicineModal() {
-  const patient = MOCK_DATA.patients.find(p => p.id === (AppState.examination.selectedPatient || 1));
+async function openAddMedicineModal() {
+  const patient = MOCK_DATA.patients.find(
+    p => p.id === (AppState.examination.selectedPatient || 1),
+  );
   if (patient && patient.isLocked) {
     showToast('Hồ sơ bệnh án đã hoàn tất và bị khóa. Không thể thêm thuốc!', 'error');
     return;
   }
 
   const meds = MOCK_DATA.medicines;
-  const medList = meds
-    .map((m, i) => `${i + 1}. [${m.code}] ${m.name} (HC: ${m.active}) - ${m.price.toLocaleString()} đ/${m.unit} [${m.usage}]`)
-    .join('\n');
-
-  const choice = prompt(
-    `DANH MỤC THUỐC PHÒNG KHÁM:\n\n${medList}\n\nNhập số thứ tự thuốc cần kê (1-${meds.length}):`,
-    '1'
-  );
+  const values = await requestForm({
+    title: 'Thêm thuốc vào đơn',
+    confirmLabel: 'Thêm thuốc',
+    fields: [
+      {
+        name: 'medicine',
+        label: 'Thuốc',
+        onChange: (value, form) => {
+          const usage = form.elements.usage;
+          if (!usage.dataset.edited) usage.value = meds[Number(value) - 1]?.usage || '';
+        },
+        value: '1',
+        options: meds.map((m, i) => ({
+          value: i + 1,
+          label: `${m.name} · ${m.active} · ${money(m.price)}/${m.unit}`,
+        })),
+      },
+      { name: 'qty', label: 'Tổng số lượng', type: 'number', value: '14', min: 1, required: true },
+      ...[
+        ['morning', 'Sáng', '1'],
+        ['noon', 'Trưa', '0'],
+        ['afternoon', 'Chiều', '0'],
+        ['evening', 'Tối', '1'],
+      ].map(([name, label, value]) => ({
+        name,
+        label: `Liều ${label.toLowerCase()}`,
+        value,
+        type: 'number',
+        min: 0,
+        step: 'any',
+        compact: true,
+      })),
+      {
+        name: 'usage',
+        label: 'Cách dùng',
+        type: 'textarea',
+        placeholder: 'Theo hướng dẫn sử dụng của thuốc',
+      },
+    ],
+  });
+  if (!values) return;
+  const choice = values.medicine;
 
   const index = parseInt(choice) - 1;
   if (index >= 0 && index < meds.length) {
     const med = meds[index];
-    const qtyStr = prompt(`Nhập tổng số lượng ${med.unit} cho [${med.name}]:`, '14');
+    const qtyStr = values.qty;
     const qty = parseInt(qtyStr) || 14;
 
-    const morning = prompt(`Nhập liều buổi SÁNG (số viên):`, '1') || '1';
-    const noon = prompt(`Nhập liều buổi TRƯA (số viên, 0 nếu không uống):`, '0') || '0';
-    const afternoon = prompt(`Nhập liều buổi CHIỀU (số viên, 0 nếu không uống):`, '0') || '0';
-    const evening = prompt(`Nhập liều buổi TỐI (số viên):`, '1') || '1';
-
-    const usage = prompt(`Nhập cách dùng thuốc:`, med.usage || 'Uống sau bữa ăn no với nhiều nước');
+    const morning = values.morning || '1';
+    const noon = values.noon || '0';
+    const afternoon = values.afternoon || '0';
+    const evening = values.evening || '1';
+    const usage = values.usage || med.usage || 'Uống sau bữa ăn no với nhiều nước';
 
     const doseDetail = `Sáng: ${morning} • Trưa: ${noon} • Chiều: ${afternoon} • Tối: ${evening} (${med.unit})`;
 
@@ -745,7 +1180,7 @@ function openAddMedicineModal() {
       evening: parseFloat(evening) || 0,
       doseDetail: doseDetail,
       dose: doseDetail,
-      usage: usage
+      usage: usage,
     });
 
     render();
@@ -754,7 +1189,9 @@ function openAddMedicineModal() {
 }
 
 function removeMedicine(index) {
-  const patient = MOCK_DATA.patients.find(p => p.id === (AppState.examination.selectedPatient || 1));
+  const patient = MOCK_DATA.patients.find(
+    p => p.id === (AppState.examination.selectedPatient || 1),
+  );
   if (patient && patient.isLocked) {
     showToast('Hồ sơ bệnh án đã bị khóa. Không thể xóa thuốc!', 'error');
     return;
@@ -766,7 +1203,7 @@ function removeMedicine(index) {
 
 function completeExamination(patientId) {
   const p = MOCK_DATA.patients.find(pt => pt.id === patientId) || MOCK_DATA.patients[0];
-  
+
   if (p.isLocked) {
     showToast('Hồ sơ bệnh án này đã được hoàn tất và khóa trước đó!', 'info');
     return;
@@ -797,12 +1234,16 @@ function completeExamination(patientId) {
   render();
   showToast(
     `🎉 Bác sĩ đã hoàn tất ca khám và KHÓA HỒ SƠ cho ${p.name}! Tổng viện phí ${grandTotal.toLocaleString()} đ đã được chuyển sang Quầy Thu ngân.`,
-    'success'
+    'success',
   );
-  
+
   // Tự động điều hướng sang quầy thu ngân sau 1.5s
   setTimeout(() => {
-    openBillingForPatient(p.name, 'TS.BS Trần Thị Minh', apt?.code || `LH-20260914-${String(p.id).padStart(3, '0')}`);
+    openBillingForPatient(
+      p.name,
+      'TS.BS Trần Thị Minh',
+      apt?.code || `LH-20260914-${String(p.id).padStart(3, '0')}`,
+    );
   }, 1500);
 }
 
@@ -815,5 +1256,5 @@ function toggleSidebar() {
 // ─── Initialize App ───
 document.addEventListener('DOMContentLoaded', () => {
   render();
+  restoreAuth();
 });
-

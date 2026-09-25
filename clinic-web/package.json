@@ -1,0 +1,17 @@
+{
+  "name": "medicare-clinic-web",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MediCare static frontend and browser regression checks",
+  "scripts": {
+    "start": "node server.cjs",
+    "test:auth": "node tests/auth.test.cjs",
+    "test": "node tests/ui.test.cjs",
+    "test:visual": "node tests/visual-review.cjs",
+    "test:a11y": "node tests/accessibility.cjs"
+  },
+  "devDependencies": {
+    "axe-core": "4.13.0",
+    "playwright": "1.63.0"
+  }
+}

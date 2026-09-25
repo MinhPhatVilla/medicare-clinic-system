@@ -24,6 +24,8 @@ const envSchema = z.object({
   // Database
   DB_HOST: z.string().default('localhost'),
   DB_PORT: z.coerce.number().int().min(1).max(65535).default(5432),
+  DB_SSL_CA_FILE: z.string().trim().default(''),
+  DB_POOL_MAX: z.coerce.number().int().min(1).max(20).default(5),
   DB_SSL: z
     .enum(['true', 'false'])
     .default('false')

@@ -1,82 +1,523 @@
 /* Public website, patient journey and application shell. */
 function renderLanding() {
-  return `<div class="public-site">
-    <div class="contact-strip"><div class="container"><span>${icon('map-pin')} Km10 Nguyễn Trãi, Hà Đông, Hà Nội</span><span>${icon('clock-3')} Thứ 2 - Chủ nhật: 07:30 - 20:00</span><a href="tel:19006868">${icon('phone')} Hotline <strong>1900 6868</strong></a></div></div>
-    <header class="site-header" id="navbar"><div class="container nav-inner">${brand()}
-      <nav class="public-nav" id="publicNav" aria-label="Điều hướng chính"><a href="#specialties" onclick="closeNavigation()">Chuyên khoa</a><a href="#doctors" onclick="closeNavigation()">Bác sĩ</a><a href="#workflow" onclick="closeNavigation()">Quy trình khám</a><a href="#contact" onclick="closeNavigation()">Liên hệ</a></nav>
-      <div class="nav-actions">${button('Lịch hẹn của tôi', "navigate('patient-appointments', 'patient')", 'calendar-days', 'secondary nav-appointment')}<button type="button" id="publicMenuButton" class="icon-btn menu-toggle" aria-label="Mở menu" aria-controls="publicNav" aria-expanded="false" onclick="togglePublicMenu()">${icon('menu')}</button></div>
-    </div></header>
+  return /* HTML */ `<div class="public-site">
+    <div class="contact-strip">
+      <div class="container">
+        <span>${icon('map-pin')} Lã Xuân Oai, TP Thủ Đức</span
+        ><span>${icon('clock-3')} Thứ 2 - Chủ nhật: 07:30 - 20:00</span
+        ><a href="tel:19006868">${icon('phone')} Hotline <strong>1900 6868</strong></a>
+      </div>
+    </div>
+    <header class="site-header" id="navbar">
+      <div class="container nav-inner">
+        ${brand()}
+        <nav class="public-nav" id="publicNav" aria-label="Điều hướng chính">
+          <a href="#specialties" onclick="closeNavigation()">Chuyên khoa</a
+          ><a href="#doctors" onclick="closeNavigation()">Bác sĩ</a
+          ><a href="#workflow" onclick="closeNavigation()">Quy trình khám</a
+          ><a href="#contact" onclick="closeNavigation()">Liên hệ</a>
+        </nav>
+        <div class="nav-actions">
+          ${button('Lịch hẹn của tôi', "navigate('patient-appointments', 'patient')", 'calendar-days', 'secondary nav-appointment')}<button
+            type="button"
+            id="publicMenuButton"
+            class="icon-btn menu-toggle"
+            aria-label="Mở menu"
+            aria-controls="publicNav"
+            aria-expanded="false"
+            onclick="togglePublicMenu()"
+          >
+            ${icon('menu')}
+          </button>
+        </div>
+      </div>
+    </header>
     <main id="main-content">
-      <section class="hero"><img class="hero-photo" src="assets/consultation.jpg" alt="Bác sĩ trao đổi với bệnh nhân trong buổi tư vấn" width="1920" height="1280" fetchpriority="high"><div class="hero-scrim"></div><div class="container hero-inner"><div class="hero-copy"><p class="eyebrow">PHÒNG KHÁM MEDICARE</p><h1>Đặt lịch khám bệnh</h1><p class="hero-subtitle">An tâm chăm sóc.<br>Chủ động mỗi ngày.</p><p class="hero-description">Chọn bác sĩ và thời gian phù hợp với bạn.<br>MediCare đồng hành cùng sức khỏe của cả gia đình.</p>${button('Đặt lịch khám ngay', 'quickStartBooking()', 'calendar-plus', 'primary large')}<p class="hero-note">${icon('clock-3')} Đặt hẹn trước, an tâm đến khám</p></div></div></section>
-      <section class="care-strip" aria-label="Thông tin khám bệnh"><div class="container care-grid"><div>${icon('stethoscope')}<span><strong>8 chuyên khoa</strong><small>Chăm sóc cho cả gia đình</small></span></div><div>${icon('calendar-check')}<span><strong>Chủ động giờ khám</strong><small>Chọn khung giờ phù hợp</small></span></div><div>${icon('clipboard-list')}<span><strong>Thông tin rõ ràng</strong><small>Lịch hẹn và phiếu khám điện tử</small></span></div></div></section>
-      <section class="public-section" id="specialties"><div class="container"><div class="section-heading"><div><p class="eyebrow">CHĂM SÓC ĐÚNG CHUYÊN KHOA</p><h2>Bạn cần khám chuyên khoa nào?</h2></div><p class="muted">Lựa chọn phù hợp với nhu cầu sức khỏe của bạn.</p></div><div class="specialties-grid">${MOCK_DATA.specialties.map((s, i) => `<button class="specialty-tile" onclick="quickBookSpecialty(${s.id})"><span class="specialty-icon">${icon(specialtyIcons[i])}</span><span><strong>${escapeHtml(s.name)}</strong><small>Đặt lịch chuyên khoa</small></span>${icon('arrow-up-right')}</button>`).join('')}</div></div></section>
-      <section class="public-section doctors-section" id="doctors"><div class="container"><div class="section-heading"><div><p class="eyebrow">ĐỘI NGŨ BÁC SĨ</p><h2>Chuyên môn vững vàng.<br>Chăm sóc tận tâm.</h2></div><p class="muted">Tìm bác sĩ phù hợp và chọn lịch khám của bạn.</p></div><div class="doctors-grid">${MOCK_DATA.doctors.map(d => `<article class="doctor-profile"><div class="doctor-profile-top">${doctorAvatar(d)}${badge(MOCK_DATA.specialties.find(s => s.id === d.specialty).name, 'info')}</div><h3>${escapeHtml(d.name)}</h3><p class="muted small">${escapeHtml(d.title)}</p><p class="doctor-experience">${icon('badge-check')} ${d.exp} năm kinh nghiệm</p>${button('Đặt lịch với bác sĩ', `quickBookDoctor(${d.id})`, 'arrow-right', 'secondary')}</article>`).join('')}</div></div></section>
-      <section class="public-section" id="workflow"><div class="container"><div class="section-heading"><div><p class="eyebrow">ĐƠN GIẢN TỪ LẦN HẸN ĐẦU</p><h2>Một lịch hẹn, bốn bước dễ dàng</h2></div></div><ol class="journey">${[['stethoscope', 'Chọn chuyên khoa', 'Theo nhu cầu khám của bạn.'], ['user-round-check', 'Chọn bác sĩ', 'Tìm người đồng hành phù hợp.'], ['calendar-days', 'Chọn thời gian', 'Chủ động ngày và giờ đến khám.'], ['clipboard-check', 'Xác nhận lịch hẹn', 'Nhận phiếu khám điện tử.']].map(([i, title, text], n) => `<li><span class="journey-number">0${n + 1}</span>${icon(i)}<h3>${title}</h3><p class="muted small">${text}</p></li>`).join('')}</ol></div></section>
-      <section class="contact-section" id="features"><div class="container contact-content" id="contact"><div><p class="eyebrow">MEDICARE LUÔN SẴN SÀNG</p><h2>Cần hỗ trợ đặt lịch?</h2><p class="muted">Liên hệ với chúng tôi để được hướng dẫn.</p></div><a class="btn btn-primary large" href="tel:19006868">${icon('phone')} 1900 6868</a><div class="contact-hours"><strong>07:30 - 20:00</strong><span>Thứ 2 đến Chủ nhật</span></div></div></section>
-    </main><footer class="site-footer"><div class="container footer-main">${brand()}<p>Km10 Nguyễn Trãi, Hà Đông, Hà Nội</p><button class="text-button" onclick="navigate('login')">${icon('log-in')} Không gian làm việc / Demo</button></div><div class="container footer-bottom"><span>© 2026 MediCare. Chăm sóc sức khỏe, từ sự tận tâm.</span><span>Phiên bản minh họa</span></div></footer>
+      <section class="hero">
+        <img
+          class="hero-photo"
+          src="assets/consultation.jpg"
+          alt="Bác sĩ trao đổi với bệnh nhân trong buổi tư vấn"
+          width="1920"
+          height="1280"
+          fetchpriority="high"
+        />
+        <div class="hero-scrim"></div>
+        <div class="container hero-inner">
+          <div class="hero-copy">
+            <p class="eyebrow">PHÒNG KHÁM MEDICARE</p>
+            <h1>Đặt lịch khám bệnh</h1>
+            <p class="hero-subtitle">
+              An tâm chăm sóc.<br />
+              Chủ động mỗi ngày.
+            </p>
+            <p class="hero-description">
+              Chọn bác sĩ và thời gian phù hợp với bạn.<br />
+              MediCare đồng hành cùng sức khỏe của cả gia đình.
+            </p>
+            ${button('Đặt lịch khám ngay', 'quickStartBooking()', 'calendar-plus', 'primary large')}
+            <p class="hero-note">${icon('clock-3')} Đặt hẹn trước, an tâm đến khám</p>
+          </div>
+        </div>
+      </section>
+      <section class="care-strip" aria-label="Thông tin khám bệnh">
+        <div class="container care-grid">
+          <div>
+            ${icon('stethoscope')}<span
+              ><strong>8 chuyên khoa</strong><small>Chăm sóc cho cả gia đình</small></span
+            >
+          </div>
+          <div>
+            ${icon('calendar-check')}<span
+              ><strong>Chủ động giờ khám</strong><small>Chọn khung giờ phù hợp</small></span
+            >
+          </div>
+          <div>
+            ${icon('clipboard-list')}<span
+              ><strong>Thông tin rõ ràng</strong><small>Lịch hẹn và phiếu khám điện tử</small></span
+            >
+          </div>
+        </div>
+      </section>
+      <section class="public-section" id="specialties">
+        <div class="container">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">CHĂM SÓC ĐÚNG CHUYÊN KHOA</p>
+              <h2>Bạn cần khám chuyên khoa nào?</h2>
+            </div>
+            <p class="muted">Lựa chọn phù hợp với nhu cầu sức khỏe của bạn.</p>
+          </div>
+          <div class="specialties-grid">
+            ${MOCK_DATA.specialties.map((s, i) => `<button class="specialty-tile" onclick="quickBookSpecialty(${s.id})"><span class="specialty-icon">${icon(specialtyIcons[i])}</span><span><strong>${escapeHtml(s.name)}</strong><small>Đặt lịch chuyên khoa</small></span>${icon('arrow-up-right')}</button>`).join('')}
+          </div>
+        </div>
+      </section>
+      <section class="public-section doctors-section" id="doctors">
+        <div class="container">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">ĐỘI NGŨ BÁC SĨ</p>
+              <h2>Chuyên môn vững vàng.<br />Chăm sóc tận tâm.</h2>
+            </div>
+            <p class="muted">Tìm bác sĩ phù hợp và chọn lịch khám của bạn.</p>
+          </div>
+          <div class="doctors-grid">
+            ${MOCK_DATA.doctors.map(d => `<article class="doctor-profile"><div class="doctor-profile-top">${doctorAvatar(d)}${badge(MOCK_DATA.specialties.find(s => s.id === d.specialty).name, 'info')}</div><h3>${escapeHtml(d.name)}</h3><p class="muted small">${escapeHtml(d.title)}</p><p class="doctor-experience">${icon('badge-check')} ${d.exp} năm kinh nghiệm</p>${button('Đặt lịch với bác sĩ', `quickBookDoctor(${d.id})`, 'arrow-right', 'secondary')}</article>`).join('')}
+          </div>
+        </div>
+      </section>
+      <section class="public-section" id="workflow">
+        <div class="container">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">ĐƠN GIẢN TỪ LẦN HẸN ĐẦU</p>
+              <h2>Một lịch hẹn, bốn bước dễ dàng</h2>
+            </div>
+          </div>
+          <ol class="journey">
+            ${[
+              ['stethoscope', 'Chọn chuyên khoa', 'Theo nhu cầu khám của bạn.'],
+              ['user-round-check', 'Chọn bác sĩ', 'Tìm người đồng hành phù hợp.'],
+              ['calendar-days', 'Chọn thời gian', 'Chủ động ngày và giờ đến khám.'],
+              ['clipboard-check', 'Xác nhận lịch hẹn', 'Nhận phiếu khám điện tử.'],
+            ]
+              .map(
+                ([i, title, text], n) =>
+                  `<li><span class="journey-number">0${n + 1}</span>${icon(i)}<h3>${title}</h3><p class="muted small">${text}</p></li>`,
+              )
+              .join('')}
+          </ol>
+        </div>
+      </section>
+      <section class="contact-section" id="features">
+        <div class="container contact-content" id="contact">
+          <div>
+            <p class="eyebrow">MEDICARE LUÔN SẴN SÀNG</p>
+            <h2>Cần hỗ trợ đặt lịch?</h2>
+            <p class="muted">Liên hệ với chúng tôi để được hướng dẫn.</p>
+          </div>
+          <a class="btn btn-primary large" href="tel:19006868">${icon('phone')} 1900 6868</a>
+          <div class="contact-hours">
+            <strong>07:30 - 20:00</strong><span>Thứ 2 đến Chủ nhật</span>
+          </div>
+        </div>
+      </section>
+    </main>
+    <footer class="site-footer">
+      <div class="container footer-main">
+        ${brand()}
+        <p>Lã Xuân Oai, TP Thủ Đức</p>
+        <button class="text-button" onclick="navigate('login')">
+          ${icon('log-in')} Đăng nhập
+        </button>
+      </div>
+      <div class="container footer-bottom">
+        <span>© 2026 MediCare. Chăm sóc sức khỏe, từ sự tận tâm.</span
+        ><span>Phiên bản minh họa</span>
+      </div>
+    </footer>
   </div>`;
 }
 
 function renderLogin() {
-  const role = AppState.loginRole || 'patient';
-  const roles = [['patient', 'Người bệnh', 'user-round'], ['doctor', 'Bác sĩ', 'stethoscope'], ['receptionist', 'Tiếp nhận', 'clipboard-check'], ['admin', 'Quản trị', 'chart-no-axes-combined']];
-  return `<div class="login-page"><header class="container login-header">${brand()}${button('Trang chủ', "navigate('landing')", 'arrow-left', 'ghost')}</header><main id="main-content" class="login-main"><div class="login-heading"><p class="eyebrow">MEDICARE WORKSPACE</p><h1>Chào mừng bạn trở lại</h1><p class="muted">Đăng nhập vào không gian chăm sóc sức khỏe của bạn.</p></div><form class="login-form" onsubmit="event.preventDefault(); handleLogin()"><span class="badge badge-warning">Tài khoản demo</span><fieldset class="role-fieldset" id="roleSelector"><legend>Vai trò của bạn</legend><div class="role-options">${roles.map(([key, label, i]) => `<button type="button" class="role-option ${role === key ? 'selected' : ''}" aria-pressed="${role === key}" data-focus-key="role-${key}" onclick="selectRole('${key}')">${icon(i)}<span>${label}</span></button>`).join('')}</div></fieldset><div class="field"><label for="loginEmail">Email</label><input class="form-input" id="loginEmail" type="email" value="${role}@medicare.vn" readonly autocomplete="username"></div><div class="field"><label for="loginPass">Mật khẩu</label><input class="form-input" id="loginPass" type="password" value="demo123456" readonly autocomplete="current-password"></div><button class="btn btn-primary large full-width" type="submit">${icon('log-in')} Vào không gian làm việc</button></form></main><footer class="login-footer muted small">MediCare · Phiên bản minh họa, không dùng dữ liệu bệnh nhân thật</footer></div>`;
+  const registering = AppState.authMode === 'register';
+  return `<div class="login-page">
+    <header class="container login-header">
+      ${brand()}${button('Trang chủ', "navigate('landing')", 'arrow-left', 'ghost')}
+    </header>
+    <main id="main-content" class="login-main">
+      <div class="login-heading">
+        <p class="eyebrow">MEDICARE</p>
+        <h1>${registering ? 'Đăng ký tài khoản' : 'Chào mừng bạn trở lại'}</h1>
+        <p class="muted">${registering ? 'Tài khoản dành cho người bệnh.' : 'Đăng nhập vào tài khoản của bạn.'}</p>
+      </div>
+      <form id="authForm" class="login-form" onsubmit="event.preventDefault(); handleLogin()">
+        ${registering ? '<div class="field"><label for="fullName">Họ và tên</label><input class="form-input" id="fullName" name="fullName" autocomplete="name" required minlength="2" maxlength="100"></div>' : ''}
+        <div class="field"><label for="loginEmail">Email</label>
+          <input class="form-input" id="loginEmail" name="email" type="email" required maxlength="100" autocomplete="username">
+        </div>
+        <div class="field"><label for="loginPass">Mật khẩu</label>
+          <input class="form-input" id="loginPass" name="password" type="password" required ${registering ? 'minlength="6" maxlength="50" aria-describedby="passwordHelp"' : ''} autocomplete="${registering ? 'new-password' : 'current-password'}">
+          ${registering ? '<small id="passwordHelp" class="muted">6–50 ký tự, gồm chữ hoa, chữ thường và chữ số.</small>' : ''}
+        </div>
+        ${registering ? '<div class="field"><label for="confirmation">Nhập lại mật khẩu</label><input class="form-input" id="confirmation" name="confirmation" type="password" required maxlength="50" autocomplete="new-password"></div>' : ''}
+        <p id="authError" role="alert"></p>
+        <button class="btn btn-primary large full-width" type="submit">
+          ${icon(registering ? 'user-plus' : 'log-in')} ${registering ? 'Tạo tài khoản' : 'Đăng nhập'}
+        </button>
+        <button class="text-button" type="button" onclick="setAuthMode('${registering ? 'login' : 'register'}')">
+          ${registering ? 'Đã có tài khoản? Đăng nhập' : 'Chưa có tài khoản? Đăng ký'}
+        </button>
+      </form>
+    </main>
+    <footer class="login-footer muted small">MediCare · Chăm sóc sức khỏe, từ sự tận tâm</footer>
+  </div>`;
 }
 
 function renderSidebar(role) {
   const menus = {
-    patient: [['patient-dashboard', 'Tổng quan', 'layout-dashboard'], ['patient-booking', 'Đặt lịch khám', 'calendar-plus'], ['patient-appointments', 'Lịch hẹn của tôi', 'calendar-days']],
-    doctor: [['doctor-dashboard', 'Hàng đợi khám', 'users-round'], ['doctor-examination', 'Phiếu khám bệnh', 'clipboard-list']],
-    receptionist: [['receptionist-dashboard', 'Tiếp nhận bệnh nhân', 'clipboard-check'], ['receptionist-billing', 'Thu ngân', 'wallet']],
-    admin: [['admin-dashboard', 'Quản lý phòng khám', 'chart-no-axes-combined']]
+    patient: [
+      ['patient-dashboard', 'Tổng quan', 'layout-dashboard'],
+      ['patient-booking', 'Đặt lịch khám', 'calendar-plus'],
+      ['patient-appointments', 'Lịch hẹn của tôi', 'calendar-days'],
+    ],
+    doctor: [
+      ['doctor-dashboard', 'Hàng đợi khám', 'users-round'],
+      ['doctor-examination', 'Phiếu khám bệnh', 'clipboard-list'],
+    ],
+    receptionist: [
+      ['receptionist-dashboard', 'Tiếp nhận bệnh nhân', 'clipboard-check'],
+      ['receptionist-billing', 'Thu ngân', 'wallet'],
+    ],
+    admin: [['admin-dashboard', 'Quản lý phòng khám', 'chart-no-axes-combined']],
   };
-  const names = { patient: ['Nguyễn Văn An', 'Người bệnh', 'NA'], doctor: ['Trần Thị Minh', 'Bác sĩ Nội khoa', 'TM'], receptionist: ['Lễ tân - Quầy 1', 'Tiếp nhận & Thu ngân', 'LT'], admin: ['Quản trị viên', 'Quản lý phòng khám', 'QT'] };
-  const user = names[role];
-  return `<aside class="sidebar" id="sidebar" aria-label="Menu không gian làm việc"><div class="sidebar-brand">${brand()}<button class="icon-btn sidebar-close" onclick="closeNavigation(); document.getElementById('sidebarToggle').focus()" aria-label="Đóng menu">${icon('x')}</button></div><p class="sidebar-label">KHÔNG GIAN CỦA BẠN</p><nav class="sidebar-nav">${menus[role].map(([view, label, i]) => `<button class="sidebar-link ${AppState.currentView === view ? 'active' : ''}" ${AppState.currentView === view ? 'aria-current="page"' : ''} onclick="navigate('${view}', '${role}')">${icon(i)}<span>${label}</span></button>`).join('')}</nav><div class="sidebar-support">${icon('headset')}<span>Cần hỗ trợ?<a href="tel:19006868">1900 6868</a></span></div><div class="sidebar-user"><span class="avatar">${user[2]}</span><div><strong>${user[0]}</strong><span>${user[1]}</span></div>${iconButton('Đổi vai trò', "navigate('login')", 'log-out')}</div></aside>`;
+  const names = {
+    patient: ['Nguyễn Văn An', 'Người bệnh', 'NA'],
+    doctor: ['Trần Thị Minh', 'Bác sĩ Nội khoa', 'TM'],
+    receptionist: ['Lễ tân - Quầy 1', 'Tiếp nhận & Thu ngân', 'LT'],
+    admin: ['Quản trị viên', 'Quản lý phòng khám', 'QT'],
+  };
+  const user = [...names[role]];
+  if (AppState.currentUser) {
+    user[0] = escapeHtml(AppState.currentUser.fullName);
+    user[2] = escapeHtml(AppState.currentUser.fullName.trim().split(/\s+/).slice(-2).map(part => part[0]).join(''));
+  }
+  return /* HTML */ `<aside class="sidebar" id="sidebar" aria-label="Menu không gian làm việc">
+    <div class="sidebar-brand">
+      ${brand()}<button
+        class="icon-btn sidebar-close"
+        onclick="closeNavigation(); document.getElementById('sidebarToggle').focus()"
+        aria-label="Đóng menu"
+      >
+        ${icon('x')}
+      </button>
+    </div>
+    <p class="sidebar-label">KHÔNG GIAN CỦA BẠN</p>
+    <nav class="sidebar-nav">
+      ${menus[role].map(([view, label, i]) => `<button class="sidebar-link ${AppState.currentView === view ? 'active' : ''}" ${AppState.currentView === view ? 'aria-current="page"' : ''} onclick="navigate('${view}', '${role}')">${icon(i)}<span>${label}</span></button>`).join('')}
+    </nav>
+    <div class="sidebar-support">
+      ${icon('headset')}<span>Cần hỗ trợ?<a href="tel:19006868">1900 6868</a></span>
+    </div>
+    <div class="sidebar-user">
+      <span class="avatar">${user[2]}</span>
+      <div><strong>${user[0]}</strong><span>${user[1]}</span></div>
+      ${iconButton('Đăng xuất', 'handleLogout()', 'log-out')}
+    </div>
+  </aside>`;
 }
 
 function renderDashboardLayout(role, content) {
-  return `<div class="workspace">${renderSidebar(role)}<button class="nav-backdrop" onclick="closeNavigation()" aria-label="Đóng menu"></button><div class="workspace-body"><header class="workspace-topbar"><div class="row"><button id="sidebarToggle" class="icon-btn menu-toggle" aria-label="Mở menu" aria-controls="sidebar" aria-expanded="false" onclick="toggleWorkspaceNavigation()">${icon('menu')}</button><span class="workspace-label">MediCare <span>/</span> ${role === 'patient' ? 'Sức khỏe của bạn' : 'Không gian làm việc'}</span></div><div class="row">${badge('Dữ liệu demo', 'neutral')}${iconButton('Về trang chủ', "navigate('landing')", 'house')}</div></header><main class="workspace-main" id="main-content">${content}</main><footer class="workspace-footer">MediCare · Phòng khám đa khoa<span>Hotline: 1900 6868</span></footer></div></div>`;
+  return /* HTML */ `<div class="workspace">
+    ${renderSidebar(role)}<button
+      class="nav-backdrop"
+      onclick="closeNavigation()"
+      aria-label="Đóng menu"
+    ></button>
+    <div class="workspace-body">
+      <header class="workspace-topbar">
+        <div class="row">
+          <button
+            id="sidebarToggle"
+            class="icon-btn menu-toggle"
+            aria-label="Mở menu"
+            aria-controls="sidebar"
+            aria-expanded="false"
+            onclick="toggleWorkspaceNavigation()"
+          >
+            ${icon('menu')}</button
+          ><span class="workspace-label"
+            >MediCare
+            <span>/</span> ${role === 'patient' ? 'Sức khỏe của bạn' : 'Không gian làm việc'}</span
+          >
+        </div>
+        <div class="row">
+          ${badge('Dữ liệu demo', 'neutral')}${iconButton('Về trang chủ', "navigate('landing')", 'house')}
+        </div>
+      </header>
+      <main class="workspace-main" id="main-content">${content}</main>
+      <footer class="workspace-footer">
+        MediCare · Phòng khám đa khoa<span>Hotline: 1900 6868</span>
+      </footer>
+    </div>
+  </div>`;
 }
 
 function renderPatientDashboard() {
-  return `${pageHeader('SỨC KHỎE CỦA BẠN', 'Xin chào, Nguyễn Văn An', 'Mọi lịch hẹn và thông tin khám bệnh, ở cùng một nơi.', button('Đặt lịch khám', 'quickStartBooking()', 'calendar-plus'))}<div class="stats-grid">${stat('Lịch hẹn sắp tới', '2', 'calendar-days')}${stat('Lần khám trước đó', '8', 'clipboard-list', 'green')}${stat('Đơn thuốc đang dùng', '3', 'pill', 'amber')}${stat('Tình trạng sức khỏe', 'Tốt', 'heart-pulse', 'rose')}</div><section class="surface"><div class="section-heading"><h2>Lịch hẹn của bạn</h2>${button('Tất cả lịch hẹn', "navigate('patient-appointments', 'patient')", 'arrow-right', 'ghost')}</div><div class="appointment-grid">${MOCK_DATA.appointments.filter(a => a.status !== 'cancelled').slice(0, 2).map(renderAppointmentCard).join('')}</div></section><section class="surface"><div class="section-heading"><h2>Khám gần đây</h2></div><div class="history-list">${[['05/09/2026', 'Viêm dạ dày (K29)', 'BS Trần Thị Minh · Nội khoa'], ['20/08/2026', 'Kiểm tra tổng quát', 'BS Phạm Thu Hà · Nhi khoa']].map(([date, title, desc]) => `<div class="history-row"><span class="history-icon">${icon('clipboard-check')}</span><div><strong>${title}</strong><p class="muted small">${desc}</p></div><time>${date}</time>${badge('Hoàn tất', 'success')}</div>`).join('')}</div></section>`;
+  return /* HTML */ `${pageHeader('SỨC KHỎE CỦA BẠN', 'Xin chào, ' + (AppState.currentUser?.fullName || 'bạn'), 'Mọi lịch hẹn và thông tin khám bệnh, ở cùng một nơi.', button('Đặt lịch khám', 'quickStartBooking()', 'calendar-plus'))}
+    <div class="stats-grid">
+      ${stat('Lịch hẹn sắp tới', '2', 'calendar-days')}${stat('Lần khám trước đó', '8', 'clipboard-list', 'green')}${stat('Đơn thuốc đang dùng', '3', 'pill', 'amber')}${stat('Tình trạng sức khỏe', 'Tốt', 'heart-pulse', 'rose')}
+    </div>
+    <section class="surface">
+      <div class="section-heading">
+        <h2>Lịch hẹn của bạn</h2>
+        ${button('Tất cả lịch hẹn', "navigate('patient-appointments', 'patient')", 'arrow-right', 'ghost')}
+      </div>
+      <div class="appointment-grid">
+        ${MOCK_DATA.appointments
+          .filter(a => a.status !== 'cancelled')
+          .slice(0, 2)
+          .map(renderAppointmentCard)
+          .join('')}
+      </div>
+    </section>
+    <section class="surface">
+      <div class="section-heading"><h2>Khám gần đây</h2></div>
+      <div class="history-list">
+        ${[
+          ['05/09/2026', 'Viêm dạ dày (K29)', 'BS Trần Thị Minh · Nội khoa'],
+          ['20/08/2026', 'Kiểm tra tổng quát', 'BS Phạm Thu Hà · Nhi khoa'],
+        ]
+          .map(
+            ([date, title, desc]) =>
+              `<div class="history-row"><span class="history-icon">${icon('clipboard-check')}</span><div><strong>${title}</strong><p class="muted small">${desc}</p></div><time>${date}</time>${badge('Hoàn tất', 'success')}</div>`,
+          )
+          .join('')}
+      </div>
+    </section>`;
 }
 
 function renderAppointmentCard(apt) {
-  return `<article class="appointment-card"><div class="appointment-card-top"><span class="appointment-date">${icon('calendar-days')} ${formatDate(apt.date)} <strong>${escapeHtml(apt.time)}</strong></span>${statusBadge(apt.status)}</div><h3>${escapeHtml(apt.doctor)}</h3><p class="muted">${escapeHtml(apt.specialty)} · ${escapeHtml(apt.room || 'Phòng khám MediCare')}</p><p class="small muted">${escapeHtml(apt.patient)} · ${escapeHtml(apt.code)}</p><div class="appointment-card-actions">${appointmentActions(apt)}</div></article>`;
+  return /* HTML */ `<article class="appointment-card">
+    <div class="appointment-card-top">
+      <span class="appointment-date"
+        >${icon('calendar-days')} ${formatDate(apt.date)}
+        <strong>${escapeHtml(apt.time)}</strong></span
+      >${statusBadge(apt.status)}
+    </div>
+    <h3>${escapeHtml(apt.doctor)}</h3>
+    <p class="muted">
+      ${escapeHtml(apt.specialty)} · ${escapeHtml(apt.room || 'Phòng khám MediCare')}
+    </p>
+    <p class="small muted">${escapeHtml(apt.patient)} · ${escapeHtml(apt.code)}</p>
+    <div class="appointment-card-actions">${appointmentActions(apt)}</div>
+  </article>`;
 }
 function renderPatientAppointments() {
-  return `${pageHeader('LỊCH KHÁM', 'Lịch hẹn của tôi', `${MOCK_DATA.appointments.length} lịch hẹn`, button('Đặt lịch mới', 'quickStartBooking()', 'calendar-plus'))}<div class="appointment-grid">${MOCK_DATA.appointments.map(renderAppointmentCard).join('') || emptyState('calendar-days', 'Chưa có lịch hẹn', 'Lịch khám của bạn sẽ xuất hiện tại đây.')}</div>`;
+  return /* HTML */ `${pageHeader('LỊCH KHÁM', 'Lịch hẹn của tôi', `${MOCK_DATA.appointments.length} lịch hẹn`, button('Đặt lịch mới', 'quickStartBooking()', 'calendar-plus'))}
+    <div class="appointment-grid">
+      ${MOCK_DATA.appointments.map(renderAppointmentCard).join('') || emptyState('calendar-days', 'Chưa có lịch hẹn', 'Lịch khám của bạn sẽ xuất hiện tại đây.')}
+    </div>`;
 }
 
 function renderPatientBooking() {
   const step = AppState.booking.step;
   if (step === 5) return renderBookingSuccess();
   const steps = ['Chuyên khoa', 'Bác sĩ', 'Thời gian', 'Xác nhận'];
-  const doctorValid = MOCK_DATA.doctors.some(d => d.id === AppState.booking.doctor && d.specialty === AppState.booking.specialty);
-  const disabled = step === 1 ? !AppState.booking.specialty : step === 2 ? !doctorValid : step === 3 ? !AppState.booking.time : false;
-  return `${pageHeader('LỊCH HẸN MỚI', 'Đặt lịch khám', 'Chọn lịch khám phù hợp với bạn.')}<ol class="booking-progress" aria-label="Tiến trình đặt lịch">${steps.map((label, i) => `<li class="${step === i + 1 ? 'active' : step > i + 1 ? 'complete' : ''}" ${step === i + 1 ? 'aria-current="step"' : ''}><span>${step > i + 1 ? icon('check') : i + 1}</span><strong>${label}</strong></li>`).join('')}</ol><div class="booking-layout"><section class="booking-content">${[renderBookingStep1, renderBookingStep2, renderBookingStep3, renderBookingStep4][step - 1]()}<div class="wizard-actions">${button(step === 1 ? 'Hủy' : 'Quay lại', step === 1 ? "navigate('patient-dashboard', 'patient')" : 'bookingPrev()', 'arrow-left', 'secondary')}${button(step === 4 ? 'Xác nhận đặt lịch' : 'Tiếp theo', step === 4 ? 'confirmBooking()' : 'bookingNext()', step === 4 ? 'check' : 'arrow-right', 'primary', disabled ? 'disabled' : '')}</div></section><aside class="booking-aside"><h3>Thông tin lịch hẹn</h3><dl class="summary-list">${summaryLine('Người khám', 'Nguyễn Văn An')}${summaryLine('Cơ sở', 'Phòng khám MediCare')}${summaryLine('Chuyên khoa', MOCK_DATA.specialties.find(s => s.id === AppState.booking.specialty)?.name || 'Chưa chọn')}${summaryLine('Bác sĩ', MOCK_DATA.doctors.find(d => d.id === AppState.booking.doctor)?.name || 'Chưa chọn')}${summaryLine('Thời gian', AppState.booking.time ? `${AppState.booking.time} · ${formatDate(AppState.booking.date || new Date().toISOString().split('T')[0])}` : 'Chưa chọn')}</dl><div class="fee-summary"><span>Phí khám dự kiến</span><strong>${money(200000)}</strong></div><a href="tel:19006868" class="support-link">${icon('headset')} Hỗ trợ: 1900 6868</a></aside></div>`;
+  const doctorValid = MOCK_DATA.doctors.some(
+    d => d.id === AppState.booking.doctor && d.specialty === AppState.booking.specialty,
+  );
+  const disabled =
+    step === 1
+      ? !AppState.booking.specialty
+      : step === 2
+        ? !doctorValid
+        : step === 3
+          ? !AppState.booking.time
+          : false;
+  return /* HTML */ `${pageHeader('LỊCH HẸN MỚI', 'Đặt lịch khám', 'Chọn lịch khám phù hợp với bạn.')}
+    <ol class="booking-progress" aria-label="Tiến trình đặt lịch">
+      ${steps.map((label, i) => `<li class="${step === i + 1 ? 'active' : step > i + 1 ? 'complete' : ''}" ${step === i + 1 ? 'aria-current="step"' : ''}><span>${step > i + 1 ? icon('check') : i + 1}</span><strong>${label}</strong></li>`).join('')}
+    </ol>
+    ${step > 1 ? `<div class="booking-context"><span>${icon('stethoscope')} ${escapeHtml(MOCK_DATA.specialties.find(s => s.id === AppState.booking.specialty)?.name)}${step > 2 ? ` · ${escapeHtml(MOCK_DATA.doctors.find(d => d.id === AppState.booking.doctor)?.name)}` : ''}</span><strong>Phí khám: ${money(200000)}</strong></div>` : ''}
+    <div class="booking-layout">
+      <section class="booking-content">
+        ${[renderBookingStep1, renderBookingStep2, renderBookingStep3, renderBookingStep4][step - 1]()}
+        <div class="wizard-actions">
+          ${button(step === 1 ? 'Hủy' : 'Quay lại', step === 1 ? "navigate('patient-dashboard', 'patient')" : 'bookingPrev()', 'arrow-left', 'secondary')}${button(step === 4 ? 'Xác nhận đặt lịch' : 'Tiếp theo', step === 4 ? 'confirmBooking()' : 'advanceBooking()', step === 4 ? 'check' : 'arrow-right', 'primary', disabled ? 'disabled' : '')}
+        </div>
+      </section>
+      <aside class="booking-aside">
+        <h3>Thông tin lịch hẹn</h3>
+        <dl class="summary-list">
+          ${summaryLine('Người khám', 'Nguyễn Văn An')}${summaryLine('Cơ sở', 'Phòng khám MediCare')}${summaryLine('Chuyên khoa', MOCK_DATA.specialties.find(s => s.id === AppState.booking.specialty)?.name || 'Chưa chọn')}${summaryLine('Bác sĩ', MOCK_DATA.doctors.find(d => d.id === AppState.booking.doctor)?.name || 'Chưa chọn')}${summaryLine('Thời gian', AppState.booking.time ? `${AppState.booking.time} · ${formatDate(AppState.booking.date || new Date().toISOString().split('T')[0])}` : 'Chưa chọn')}
+        </dl>
+        <div class="fee-summary">
+          <span>Phí khám dự kiến</span><strong>${money(200000)}</strong>
+        </div>
+        <a href="tel:19006868" class="support-link">${icon('headset')} Hỗ trợ: 1900 6868</a>
+      </aside>
+    </div>`;
 }
 function renderBookingStep1() {
-  return `<div class="step-heading"><p class="eyebrow">BƯỚC 01 / 04</p><h2 tabindex="-1">Bạn muốn khám chuyên khoa nào?</h2><p class="muted">Chọn một chuyên khoa để tìm bác sĩ phù hợp.</p></div><div class="booking-specialties">${MOCK_DATA.specialties.map((s, i) => `<button class="specialty-choice ${AppState.booking.specialty === s.id ? 'selected' : ''}" aria-pressed="${AppState.booking.specialty === s.id}" data-focus-key="specialty-${s.id}" onclick="selectSpecialty(${s.id})"><span class="specialty-icon">${icon(specialtyIcons[i])}</span><strong>${escapeHtml(s.name)}</strong><span class="selection-mark">${icon(AppState.booking.specialty === s.id ? 'circle-check' : 'circle')}</span></button>`).join('')}</div>`;
+  return /* HTML */ `<div class="step-heading">
+      <p class="eyebrow">BƯỚC 01 / 04</p>
+      <h2 tabindex="-1">Bạn muốn khám chuyên khoa nào?</h2>
+      <p class="muted">Chọn một chuyên khoa để tìm bác sĩ phù hợp.</p>
+    </div>
+    <div class="booking-specialties">
+      ${MOCK_DATA.specialties.map((s, i) => `<button class="specialty-choice ${AppState.booking.specialty === s.id ? 'selected' : ''}" aria-pressed="${AppState.booking.specialty === s.id}" data-focus-key="specialty-${s.id}" onclick="selectSpecialty(${s.id})"><span class="specialty-icon">${icon(specialtyIcons[i])}</span><strong>${escapeHtml(s.name)}</strong><span class="selection-mark">${icon(AppState.booking.specialty === s.id ? 'circle-check' : 'circle')}</span></button>`).join('')}
+    </div>`;
 }
 function renderBookingStep2() {
   const doctors = MOCK_DATA.doctors.filter(d => d.specialty === AppState.booking.specialty);
-  return `<div class="step-heading"><p class="eyebrow">BƯỚC 02 / 04</p><h2 tabindex="-1">Chọn bác sĩ của bạn</h2><p class="muted">${escapeHtml(MOCK_DATA.specialties.find(s => s.id === AppState.booking.specialty)?.name)} · Phòng khám MediCare</p></div><div class="doctor-choices">${doctors.map(d => `<button class="doctor-choice ${AppState.booking.doctor === d.id ? 'selected' : ''}" aria-pressed="${AppState.booking.doctor === d.id}" data-focus-key="doctor-${d.id}" onclick="selectDoctor(${d.id})">${doctorAvatar(d)}<span><strong>${escapeHtml(d.name)}</strong><small>${escapeHtml(d.title)}</small><small>${d.exp} năm kinh nghiệm</small></span><span class="selection-mark">${icon(AppState.booking.doctor === d.id ? 'circle-check' : 'circle')}</span></button>`).join('') || emptyState('calendar-x', 'Chưa có lịch bác sĩ', 'Vui lòng chọn chuyên khoa khác hoặc liên hệ 1900 6868.')}</div>`;
+  return /* HTML */ `<div class="step-heading">
+      <p class="eyebrow">BƯỚC 02 / 04</p>
+      <h2 tabindex="-1">Chọn bác sĩ của bạn</h2>
+      <p class="muted">
+        ${escapeHtml(MOCK_DATA.specialties.find(s => s.id === AppState.booking.specialty)?.name)} ·
+        Phòng khám MediCare
+      </p>
+    </div>
+    <div class="doctor-choices">
+      ${doctors.map(d => `<button class="doctor-choice ${AppState.booking.doctor === d.id ? 'selected' : ''}" aria-pressed="${AppState.booking.doctor === d.id}" data-focus-key="doctor-${d.id}" onclick="selectDoctor(${d.id})">${doctorAvatar(d)}<span><strong>${escapeHtml(d.name)}</strong><small>${escapeHtml(d.title)}</small><small>${d.exp} năm kinh nghiệm</small></span><span class="selection-mark">${icon(AppState.booking.doctor === d.id ? 'circle-check' : 'circle')}</span></button>`).join('') || emptyState('calendar-x', 'Chưa có lịch bác sĩ', 'Vui lòng chọn chuyên khoa khác hoặc liên hệ 1900 6868.')}
+    </div>`;
 }
 function renderBookingStep3() {
   const today = new Date().toISOString().split('T')[0];
   const key = `${AppState.booking.doctor}:${AppState.booking.date || today}`;
   // The demo generates availability at random; cache its visual state per date.
-  if (!UIState.slots[key]) UIState.slots[key] = Object.fromEntries([...MOCK_DATA.timeSlots.morning, ...MOCK_DATA.timeSlots.afternoon].map(time => [time, Math.random() > 0.7]));
-  return `<div class="step-heading"><p class="eyebrow">BƯỚC 03 / 04</p><h2 tabindex="-1">Ngày nào thuận tiện cho bạn?</h2><p class="muted">Thời gian khám được tính theo giờ Việt Nam.</p></div><div class="field date-field"><label for="bookingDate">Ngày khám</label><input type="date" id="bookingDate" class="form-input" min="${today}" value="${escapeHtml(AppState.booking.date || today)}" onchange="selectDate(this.value)"></div>${[['morning', 'Buổi sáng', '07:30 - 11:00'], ['afternoon', 'Buổi chiều', '13:30 - 16:30']].map(([keyName, label, range]) => `<fieldset class="time-period"><legend>${label}<span>${range}</span></legend><div class="time-slots">${MOCK_DATA.timeSlots[keyName].map(time => { const disabled = UIState.slots[key][time] && AppState.booking.time !== time; return `<button type="button" class="time-slot ${AppState.booking.time === time ? 'selected' : ''}" aria-pressed="${AppState.booking.time === time}" data-focus-key="time-${time}" onclick="selectTime('${time}')" ${disabled ? 'disabled title="Khung giờ đã kín"' : ''}>${time}</button>`; }).join('')}</div></fieldset>`).join('')}<div class="field"><label for="bookingReason">Lý do khám <span class="muted small">(không bắt buộc)</span></label><textarea id="bookingReason" class="form-input" rows="3" placeholder="Triệu chứng hoặc điều bạn muốn trao đổi với bác sĩ" onchange="AppState.booking.reason = this.value">${escapeHtml(AppState.booking.reason)}</textarea></div>`;
+  if (!UIState.slots[key])
+    UIState.slots[key] = Object.fromEntries(
+      [...MOCK_DATA.timeSlots.morning, ...MOCK_DATA.timeSlots.afternoon].map(time => [
+        time,
+        Math.random() > 0.7,
+      ]),
+    );
+  return /* HTML */ `<div class="step-heading">
+      <p class="eyebrow">BƯỚC 03 / 04</p>
+      <h2 tabindex="-1">Ngày nào thuận tiện cho bạn?</h2>
+      <p class="muted">Thời gian khám được tính theo giờ Việt Nam.</p>
+    </div>
+    <div class="field date-field">
+      <label for="bookingDate">Ngày khám</label
+      ><input
+        type="date"
+        id="bookingDate"
+        class="form-input"
+        min="${today}"
+        value="${escapeHtml(AppState.booking.date || today)}"
+        onchange="selectDate(this.value); render()"
+        required
+      />
+    </div>
+    ${[
+      ['morning', 'Buổi sáng', '07:30 - 11:00'],
+      ['afternoon', 'Buổi chiều', '13:30 - 16:30'],
+    ]
+      .map(
+        ([keyName, label, range]) =>
+          `<fieldset class="time-period"><legend>${label}<span>${range}</span></legend><div class="time-slots">${MOCK_DATA.timeSlots[
+            keyName
+          ]
+            .map(time => {
+              const disabled = UIState.slots[key][time] && AppState.booking.time !== time;
+              return /* HTML */ `<button
+                type="button"
+                class="time-slot ${AppState.booking.time === time ? 'selected' : ''}"
+                aria-pressed="${AppState.booking.time === time}"
+                data-focus-key="time-${time}"
+                onclick="selectTime('${time}')"
+                ${disabled ? 'disabled title="Khung giờ đã kín"' : ''}
+              >
+                ${time}
+              </button>`;
+            })
+            .join('')}</div></fieldset>`,
+      )
+      .join('')}
+    <div class="field">
+      <label for="bookingReason">Lý do khám <span class="muted small">(không bắt buộc)</span></label
+      ><textarea
+        id="bookingReason"
+        class="form-input"
+        rows="3"
+        placeholder="Triệu chứng hoặc điều bạn muốn trao đổi với bác sĩ"
+        onchange="AppState.booking.reason = this.value"
+      >
+${escapeHtml(AppState.booking.reason)}</textarea>
+    </div>`;
 }
 function renderBookingStep4() {
   const b = AppState.booking;
-  return `<div class="step-heading"><p class="eyebrow">BƯỚC 04 / 04</p><h2 tabindex="-1">Xác nhận lịch khám</h2><p class="muted">Kiểm tra thông tin trước khi hoàn tất đặt lịch.</p></div><dl class="summary-list confirmation-summary">${summaryLine('Người khám', 'Nguyễn Văn An')}${summaryLine('Chuyên khoa', MOCK_DATA.specialties.find(s => s.id === b.specialty)?.name)}${summaryLine('Bác sĩ', MOCK_DATA.doctors.find(d => d.id === b.doctor)?.name)}${summaryLine('Ngày khám', formatDate(b.date))}${summaryLine('Giờ khám', b.time)}${summaryLine('Địa điểm', 'Km10 Nguyễn Trãi, Hà Đông, Hà Nội')}${summaryLine('Lý do khám', b.reason || 'Không ghi')}${summaryLine('Phí khám', money(200000))}</dl><div class="alert alert-info">${icon('info')}<span>Phí xét nghiệm và thuốc (nếu có) được tính riêng sau buổi khám.</span></div>`;
+  return /* HTML */ `<div class="step-heading">
+      <p class="eyebrow">BƯỚC 04 / 04</p>
+      <h2 tabindex="-1">Xác nhận lịch khám</h2>
+      <p class="muted">Kiểm tra thông tin trước khi hoàn tất đặt lịch.</p>
+    </div>
+    <dl class="summary-list confirmation-summary">
+      ${summaryLine('Người khám', 'Nguyễn Văn An')}${summaryLine('Chuyên khoa', MOCK_DATA.specialties.find(s => s.id === b.specialty)?.name)}${summaryLine('Bác sĩ', MOCK_DATA.doctors.find(d => d.id === b.doctor)?.name)}${summaryLine('Ngày khám', formatDate(b.date))}${summaryLine('Giờ khám', b.time)}${summaryLine('Địa điểm', 'Lã Xuân Oai, TP Thủ Đức')}${summaryLine('Lý do khám', b.reason || 'Không ghi')}${summaryLine('Phí khám', money(200000))}
+    </dl>
+    <div class="alert alert-info">
+      ${icon('info')}<span>Phí xét nghiệm và thuốc (nếu có) được tính riêng sau buổi khám.</span>
+    </div>`;
 }
 function renderBookingSuccess() {
   const apt = AppState.lastCreatedAppointment || MOCK_DATA.appointments[0];
-  return `${pageHeader('PHIẾU HẸN KHÁM', 'Lịch hẹn đã được ghi nhận', 'Thông tin lịch khám của bạn.')}<section class="appointment-slip" id="appointmentSlip"><div class="slip-heading"><div>${brand()}<p class="muted small">Phòng khám đa khoa MediCare</p></div>${statusBadge(apt.status)}</div><div class="slip-body"><div><p class="eyebrow">PHIẾU KHÁM ĐIỆN TỬ</p><h2>${escapeHtml(apt.patient)}</h2><dl class="summary-list">${summaryLine('Mã lịch hẹn', apt.code)}${summaryLine('Bác sĩ', apt.doctor)}${summaryLine('Chuyên khoa', apt.specialty)}${summaryLine('Ngày & giờ khám', `${apt.time} · ${formatDate(apt.date)}`)}${summaryLine('Phòng khám', apt.room || 'Phòng 201')}${summaryLine('Lý do khám', apt.reason || 'Khám tổng quát')}</dl></div><div class="slip-code"><div data-qr-code="${escapeHtml(apt.code)}" class="qr-code" role="img" aria-label="Mã QR lịch hẹn ${escapeHtml(apt.code)}"></div><span class="muted small">Số thứ tự</span><strong>#${String(apt.stt || apt.id).padStart(2, '0')}</strong></div></div><div class="slip-footer">${icon('map-pin')} Km10 Nguyễn Trãi, Hà Đông, Hà Nội · 1900 6868</div></section><div class="slip-actions">${button('In phiếu khám', 'window.print()', 'printer')}${button('Lịch hẹn của tôi', "navigate('patient-appointments', 'patient')", 'calendar-days', 'secondary')}${button('Đặt lịch mới', 'quickStartBooking()', 'plus', 'ghost')}</div>`;
+  return /* HTML */ `${pageHeader('PHIẾU HẸN KHÁM', 'Lịch hẹn đã được ghi nhận', 'Thông tin lịch khám của bạn.')}
+    <section class="appointment-slip" id="appointmentSlip">
+      <div class="slip-heading">
+        <div>
+          ${brand()}
+          <p class="muted small">Phòng khám đa khoa MediCare</p>
+        </div>
+        ${statusBadge(apt.status)}
+      </div>
+      <div class="slip-body">
+        <div>
+          <p class="eyebrow">PHIẾU KHÁM ĐIỆN TỬ</p>
+          <h2>${escapeHtml(apt.patient)}</h2>
+          <dl class="summary-list">
+            ${summaryLine('Mã lịch hẹn', apt.code)}${summaryLine('Bác sĩ', apt.doctor)}${summaryLine('Chuyên khoa', apt.specialty)}${summaryLine('Ngày & giờ khám', `${apt.time} · ${formatDate(apt.date)}`)}${summaryLine('Phòng khám', apt.room || 'Phòng 201')}${summaryLine('Lý do khám', apt.reason || 'Khám tổng quát')}
+          </dl>
+        </div>
+        <div class="slip-code">
+          <div
+            data-qr-code="${escapeHtml(apt.code)}"
+            class="qr-code"
+            role="img"
+            aria-label="Mã QR lịch hẹn ${escapeHtml(apt.code)}"
+          ></div>
+          <span class="muted small">Số thứ tự</span
+          ><strong>#${String(apt.stt || apt.id).padStart(2, '0')}</strong>
+        </div>
+      </div>
+      <div class="slip-footer">
+        ${icon('map-pin')} Lã Xuân Oai, TP Thủ Đức · 1900 6868
+      </div>
+    </section>
+    <div class="slip-actions">
+      ${button('In phiếu khám', 'window.print()', 'printer')}${button('Lịch hẹn của tôi', "navigate('patient-appointments', 'patient')", 'calendar-days', 'secondary')}${button('Đặt lịch mới', 'quickStartBooking()', 'plus', 'ghost')}
+    </div>`;
 }
